@@ -62,7 +62,7 @@ export default class MenuScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     const startText = this.add
-      .text(centerX, 500, "始める", {
+      .text(centerX, 500, "Start", {
         fontSize: "32px",
         color: "#FFFFFF",
         fontFamily: "serif",
