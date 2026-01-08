@@ -61,6 +61,13 @@ export default class MenuScene extends Phaser.Scene {
       .rectangle(centerX, 500, 300, 60, DESIGN_CONSTANTS.COLORS.ACCENT)
       .setInteractive({ useHandCursor: true });
 
+    const startText = this.add
+      .text(centerX, 500, TRANSLATIONS.menu.startButton, {
+        fontSize: "32px",
+        color: "#FFFFFF",
+        fontFamily: "serif",
+      })
+      .setOrigin(0.5);
 
     // Button interactions
     startButton.on("pointerover", () => {
@@ -171,6 +178,15 @@ export default class MenuScene extends Phaser.Scene {
         button.setStrokeStyle(3, palette.colors.GOLD);
       }
 
+      // Label
+      const label = this.add
+        .text(x, y, palette.name, {
+          fontSize: "14px",
+          color: "#FFFFFF",
+          fontFamily: "serif",
+          align: "center",
+        })
+        .setOrigin(0.5);
 
       // Interactions
       button.on("pointerover", () => {
