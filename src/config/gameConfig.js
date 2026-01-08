@@ -48,3 +48,28 @@ export const BUCKET_CONFIG = [
   { value: 30, label: "中", color: 0x7b68ee },
   { value: 10, label: "小", color: 0x4a90e2 },
 ];
+
+// Traductions du jeu en français
+export const TRANSLATIONS = {
+  menu: {
+    title: "PACHINKO",
+    subtitle: "Le son des billes qui tombent\nRésonne dans le cœur\nBeauté japonaise",
+    startButton: "Commencer",
+    instructions: "Cliquez pour lancer une bille\nEnchaînez les combos pour un score élevé !",
+  },
+  ui: {
+    score: "Score",
+    lives: "Vies",
+    instruction: "Cliquez pour lancer une bille",
+  },
+  game: {
+    combo: "Combo",
+  },
+  gameOver: {
+    title: "Partie Terminée",
+    haiku: "Les billes tombent\nLe temps s'écoule\nEt revient encore",
+    finalScore: "Score Final",
+    restart: "Rejouer",
+    menu: "Menu Principal",
+  },
+};

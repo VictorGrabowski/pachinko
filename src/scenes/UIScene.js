@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { DESIGN_CONSTANTS } from "../config/gameConfig.js";
+import { DESIGN_CONSTANTS, TRANSLATIONS } from "../config/gameConfig.js";
 import { formatScore } from "../utils/helpers.js";
 
 /**
@@ -18,7 +18,7 @@ export default class UIScene extends Phaser.Scene {
     const padding = 30;
 
     // Score display
-    this.scoreLabel = this.add.text(padding, padding, "得点", {
+    this.scoreLabel = this.add.text(padding, padding, TRANSLATIONS.ui.score, {
       fontSize: "20px",
       color: "#F4A460",
       fontFamily: "serif",
@@ -33,7 +33,7 @@ export default class UIScene extends Phaser.Scene {
 
     // Lives display
     this.livesLabel = this.add
-      .text(800 - padding, padding, "残機", {
+      .text(800 - padding, padding, TRANSLATIONS.ui.lives, {
         fontSize: "20px",
         color: "#F4A460",
         fontFamily: "serif",
@@ -45,7 +45,7 @@ export default class UIScene extends Phaser.Scene {
 
     // Instructions at bottom
     this.add
-      .text(400, 50, "クリックで玉を発射", {
+      .text(400, 50, TRANSLATIONS.ui.instruction, {
         fontSize: "18px",
         color: "#F4A460",
         fontFamily: "serif",

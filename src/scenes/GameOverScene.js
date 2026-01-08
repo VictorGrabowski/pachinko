@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { DESIGN_CONSTANTS } from "../config/gameConfig.js";
+import { DESIGN_CONSTANTS, TRANSLATIONS } from "../config/gameConfig.js";
 import { formatScore } from "../utils/helpers.js";
 
 /**
@@ -15,8 +15,8 @@ export default class GameOverScene extends Phaser.Scene {
   }
 
   create() {
-    const centerX = this.cameras.main.width / 2;
-    const centerY = this.cameras.main.height / 2;
+    const centerX = 400; // Fixed game width / 2
+    const centerY = 500; // Fixed game height / 2
 
     // Background with fade in
     this.add.rectangle(
@@ -42,8 +42,8 @@ export default class GameOverScene extends Phaser.Scene {
     });
 
     // Game Over text
-    this.add
-      .text(centerX, 200, "終了", {
+    const gameOverText = this.add
+      .text(centerX, 200, TRANSLATIONS.gameOver.title, {
         fontSize: "72px",
         color: "#F4A460",
         fontFamily: "serif",
@@ -54,7 +54,7 @@ export default class GameOverScene extends Phaser.Scene {
 
     // Haiku-inspired message (mono no aware)
     const haiku = this.add
-      .text(centerX, 280, "玉は落ち\n時は流れて\nまた巡る", {
+      .text(centerX, 280, TRANSLATIONS.gameOver.haiku, {
         fontSize: "20px",
         color: "#F4A460",
         fontFamily: "serif",
@@ -65,8 +65,8 @@ export default class GameOverScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     // Score display
-    this.add
-      .text(centerX, 420, "最終得点", {
+    const finalScoreLabel = this.add
+      .text(centerX, 420, TRANSLATIONS.gameOver.finalScore, {
         fontSize: "24px",
         color: "#F4A460",
         fontFamily: "serif",
@@ -91,7 +91,7 @@ export default class GameOverScene extends Phaser.Scene {
       .setAlpha(0);
 
     const restartText = this.add
-      .text(centerX, 650, "もう一度", {
+      .text(centerX, 650, TRANSLATIONS.gameOver.restart, {
         fontSize: "28px",
         color: "#FFFFFF",
         fontFamily: "serif",
@@ -106,7 +106,7 @@ export default class GameOverScene extends Phaser.Scene {
       .setAlpha(0);
 
     const menuText = this.add
-      .text(centerX, 740, "メニューへ", {
+      .text(centerX, 740, TRANSLATIONS.gameOver.menu, {
         fontSize: "28px",
         color: "#FFFFFF",
         fontFamily: "serif",
@@ -116,30 +116,9 @@ export default class GameOverScene extends Phaser.Scene {
 
     // Fade in animations
     this.fadeInElements([
-      {
-        target: this.add
-          .text(centerX, 200, "終了", {
-            fontSize: "72px",
-            color: "#F4A460",
-            fontFamily: "serif",
-            fontStyle: "bold",
-          })
-          .setOrigin(0.5)
-          .setAlpha(0),
-        delay: 0,
-      },
+      { target: gameOverText, delay: 0 },
       { target: haiku, delay: 500 },
-      {
-        target: this.add
-          .text(centerX, 420, "最終得点", {
-            fontSize: "24px",
-            color: "#F4A460",
-            fontFamily: "serif",
-          })
-          .setOrigin(0.5)
-          .setAlpha(0),
-        delay: 1000,
-      },
+      { target: finalScoreLabel, delay: 1000 },
       { target: scoreText, delay: 1200 },
       { target: restartButton, delay: 1800 },
       { target: restartText, delay: 1800 },

@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import Ball from "../entities/Ball.js";
 import Pin from "../entities/Pin.js";
-import { DESIGN_CONSTANTS, BUCKET_CONFIG } from "../config/gameConfig.js";
+import { DESIGN_CONSTANTS, BUCKET_CONFIG, TRANSLATIONS } from "../config/gameConfig.js";
 import { applyWabiSabi, formatScore } from "../utils/helpers.js";
 
 /**
@@ -291,7 +291,7 @@ export default class GameScene extends Phaser.Scene {
    */
   showComboText(combo, x) {
     const comboText = this.add
-      .text(x, 400, `${combo}連鎖!`, {
+      .text(x, 400, `${combo} ${TRANSLATIONS.game.combo}!`, {
         fontSize: "48px",
         color: "#FF6B35",
         fontStyle: "bold",

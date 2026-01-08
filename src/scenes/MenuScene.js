@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { DESIGN_CONSTANTS } from "../config/gameConfig.js";
+import { DESIGN_CONSTANTS, TRANSLATIONS } from "../config/gameConfig.js";
 
 /**
  * Menu scene - main game menu
@@ -36,7 +36,7 @@ export default class MenuScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(centerX, 280, "PACHINKO", {
+      .text(centerX, 280, TRANSLATIONS.menu.title, {
         fontSize: "32px",
         color: "#FFD700",
         fontFamily: "serif",
@@ -46,7 +46,7 @@ export default class MenuScene extends Phaser.Scene {
 
     // Subtitle with haiku-inspired text
     this.add
-      .text(centerX, 340, "玉の落ちる音\n心に響く\n和の美", {
+      .text(centerX, 340, TRANSLATIONS.menu.subtitle, {
         fontSize: "18px",
         color: "#F4A460",
         fontFamily: "serif",
@@ -62,7 +62,7 @@ export default class MenuScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     const startText = this.add
-      .text(centerX, 500, "Start", {
+      .text(centerX, 500, TRANSLATIONS.menu.startButton, {
         fontSize: "32px",
         color: "#FFFFFF",
         fontFamily: "serif",
@@ -102,7 +102,7 @@ export default class MenuScene extends Phaser.Scene {
       .text(
         centerX,
         700,
-        "クリックして玉を発射\nコンボを繋げて高得点を狙え！",
+        TRANSLATIONS.menu.instructions,
         {
           fontSize: "20px",
           color: "#F4A460",
