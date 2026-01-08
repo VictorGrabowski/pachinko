@@ -5,20 +5,15 @@ import { DESIGN_CONSTANTS } from "../config/gameConfig.js";
  * Pin entity with visual feedback
  */
 export default class Pin extends Phaser.Physics.Arcade.Sprite {
-  constructor(scene, x, y, size = 1.0) {
+  constructor(scene, x, y) {
     super(scene, x, y, "pin");
 
+    // Note: Le groupe statique gérera la physique
+    // Nous n'appelons PAS scene.physics.add.existing(this) ni setCircle ici
+    // car le corps de physique n'existe pas encore
     scene.add.existing(this);
-    scene.physics.add.existing(this);
 
-    // Apply size scale (between 0.8 and 1.2 for subtle variation)
-    const radius = 6 * size;
-    this.setCircle(radius);
-    this.setScale(size);
-    this.setImmovable(true);
-    this.body.setAllowGravity(false);
     this.setTint(DESIGN_CONSTANTS.COLORS.PRIMARY);
-
     this.hitCount = 0;
   }
 

@@ -61,6 +61,12 @@ export default class GameScene extends Phaser.Scene {
 
     this.setupBackground();
     this.createPinGrid();
+
+    // Initialiser le mode pins mouvants si activé
+    if (FeatureManager.isEnabled('movingPins')) {
+      this.initMovingPins();
+    }
+
     this.updateStartZoneFromPinGrid();
     this.createBuckets();
 
@@ -70,10 +76,10 @@ export default class GameScene extends Phaser.Scene {
     } else {
       this.creature = null;
     }
-    
+
     // Create ball placeholder
     this.createBallPlaceholder();
-    
+
     this.setupInput();
 
     // Launch UI scene in parallel
@@ -148,7 +154,8 @@ export default class GameScene extends Phaser.Scene {
    * Create staggered pin grid with wabi-sabi imperfection
    */
   createPinGrid() {
-    this.pins = [];
+    // Utiliser un groupe de physique statique pour empêcher le mouvement des pins
+    this.pins = this.physics.add.staticGroup();
 
     // Get pin configuration from FeatureManager
     const rows = FeatureManager.getParameter("pins", "rows") || 12;
@@ -159,11 +166,11 @@ export default class GameScene extends Phaser.Scene {
       FeatureManager.getParameter("pins", "randomSize") === true;
     const spacing = DESIGN_CONSTANTS.PIN_SPACING;
     const startY = 200;
-    
+
     // Calculate horizontal centering based on number of columns
     const gridWidth = (cols - 1) * spacing;
     const startX = (800 - gridWidth) / 2;
-    
+
     // Store pin grid boundaries for start zone calculation
     this.pinGridBounds = {
       startX: startX,
@@ -181,10 +188,68 @@ export default class GameScene extends Phaser.Scene {
 
         // Apply random size if enabled (variation between 0.3 and 2.0)
         const size = useRandomSize ? 0.3 + Math.random() * 1.7 : 1.0;
-        const pin = new Pin(this, x, y, size);
-        this.pins.push(pin);
+
+        const pin = new Pin(this, x, y);
+        this.pins.add(pin);
+
+        // Apply scale if random size is enabled
+        if (useRandomSize) {
+          pin.setScale(size);
+        }
+
+        // Configurer le corps de physique circulaire avec offset pour centrer
+        // Texture pin est 16x16 avec cercle au centre (8,8)
+        // Rayon 6 = diamètre 12, donc offset = (16-12)/2 = 2
+        // Ajuster le rayon selon la taille si randomSize est activé
+        if (pin.body) {
+          const radius = useRandomSize ? 6 * size : 6;
+          const offset = useRandomSize ? 2 * size : 2;
+          pin.body.setCircle(radius, offset, offset);
+        }
+
+        // Stocker la ligne et la position initiale pour le mode moving pins
+        pin.rowIndex = row;
+        pin.initialX = x;
       }
     }
+  }
+
+  /**
+   * Initialize moving pins mode
+   */
+  initMovingPins() {
+    const speed = FeatureManager.getParameter('movingPins', 'speed') || 50;
+    const distance = FeatureManager.getParameter('movingPins', 'distance') || 30;
+    const alternateDirection = FeatureManager.getParameter('movingPins', 'alternateDirection') !== false;
+
+    this.movingPinsData = {
+      speed,
+      distance,
+      alternateDirection
+    };
+
+    // Créer des tweens pour les pins des lignes paires (0, 2, 4, etc.)
+    this.pins.children.entries.forEach((pin) => {
+      if (pin.rowIndex % 2 === 0) {
+        // Direction initiale : droite pour les lignes paires
+        const direction = alternateDirection && (pin.rowIndex / 2) % 2 === 1 ? -1 : 1;
+
+        this.tweens.add({
+          targets: pin,
+          x: pin.initialX + (distance * direction),
+          duration: (distance / speed) * 1000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.inOut',
+          onUpdate: () => {
+            // Mettre à jour le corps de physique
+            if (pin.body) {
+              pin.body.reset(pin.x, pin.y);
+            }
+          }
+        });
+      }
+    });
   }
 
   /**
@@ -291,17 +356,17 @@ export default class GameScene extends Phaser.Scene {
   createBallPlaceholder() {
     // Create a semi-transparent ball as placeholder
     this.ballPlaceholder = this.add.circle(
-      400, 
-      100, 
-      DESIGN_CONSTANTS.BALL_RADIUS, 
-      DESIGN_CONSTANTS.COLORS.PRIMARY, 
+      400,
+      100,
+      DESIGN_CONSTANTS.BALL_RADIUS,
+      DESIGN_CONSTANTS.COLORS.PRIMARY,
       0.4
     );
     this.ballPlaceholder.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.GOLD, 0.6);
-    
+
     // Add a subtle glow effect
     this.ballPlaceholder.setBlendMode(Phaser.BlendModes.ADD);
-    
+
     // Initially hidden until mouse enters start zone
     this.ballPlaceholder.setVisible(false);
   }
@@ -314,7 +379,7 @@ export default class GameScene extends Phaser.Scene {
     this.input.on("pointermove", (pointer) => {
       this.updateBallPlaceholder(pointer);
     });
-    
+
     this.input.on("pointerdown", (pointer) => {
       if (this.lives > 0 && this.activeBalls < 3 && this.ballPlaceholder.visible) {
         // Launch ball at placeholder position (constrained)
@@ -334,17 +399,17 @@ export default class GameScene extends Phaser.Scene {
       this.startZone.x + DESIGN_CONSTANTS.BALL_RADIUS,
       this.startZone.x + this.startZone.width - DESIGN_CONSTANTS.BALL_RADIUS
     );
-    
+
     // Constrain Y position within start zone
     const constrainedY = Phaser.Math.Clamp(
       pointer.y,
       this.startZone.y + DESIGN_CONSTANTS.BALL_RADIUS,
       this.startZone.y + this.startZone.height - DESIGN_CONSTANTS.BALL_RADIUS
     );
-    
+
     // Update placeholder position
     this.ballPlaceholder.setPosition(constrainedX, constrainedY);
-    
+
     // Show placeholder only if cursor is near or in the start zone
     const isNearStartZone = pointer.y < this.startZone.y + this.startZone.height + 50;
     this.ballPlaceholder.setVisible(isNearStartZone && this.lives > 0 && this.activeBalls < 3);
@@ -378,12 +443,8 @@ export default class GameScene extends Phaser.Scene {
     this.activeBalls++;
     ball.launch();
 
-    // Add collision with pins
-    this.pins.forEach((pin) => {
-      this.physics.add.collider(ball, pin, () => {
-        this.onPinHit(ball, pin);
-      });
-    });
+    // Add collision with pins - un seul collider pour tout le groupe
+    this.physics.add.collider(ball, this.pins, this.onPinHit, null, this);
 
     // Add overlap with buckets
     this.buckets.forEach((bucket) => {
@@ -642,6 +703,15 @@ export default class GameScene extends Phaser.Scene {
     // Update creature movement
     if (this.creature) {
       this.creature.update(time, delta);
+    }
+
+    // Update moving pins physics bodies
+    if (FeatureManager.isEnabled('movingPins')) {
+      this.pins.children.entries.forEach((pin) => {
+        if (pin.rowIndex % 2 === 0 && pin.body) {
+          pin.body.reset(pin.x, pin.y);
+        }
+      });
     }
 
     // Check for balls that fell off screen

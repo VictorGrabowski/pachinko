@@ -55,6 +55,39 @@ export const FEATURES = [
     ]
   },
   {
+    id: "movingPins",
+    name: "Pins Mouvants",
+    description: "Les pins se déplacent de gauche à droite, une ligne sur deux",
+    category: "gameplay",
+    enabled: false,
+    parameters: [
+      {
+        key: "speed",
+        label: "Vitesse de déplacement",
+        type: "number",
+        default: 50,
+        min: 20,
+        max: 150,
+        step: 10
+      },
+      {
+        key: "distance",
+        label: "Distance de déplacement (px)",
+        type: "number",
+        default: 30,
+        min: 10,
+        max: 60,
+        step: 5
+      },
+      {
+        key: "alternateDirection",
+        label: "Direction alternée par ligne",
+        type: "boolean",
+        default: true
+      }
+    ]
+  },
+  {
     id: "pins",
     name: "Configuration des Pins",
     description: "Ajuste la grille de pins dans le jeu",
