@@ -45,6 +45,15 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
       repeat: -1,
     });
 
+    // Combo text display
+    this.comboText = scene.add.text(x, y - 25, '', {
+      fontSize: '20px',
+      color: '#FFD700',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setVisible(false);
+
     this.isActive = true;
     this.pinHitCount = 0;
   }
@@ -63,6 +72,21 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
    */
   hitPin() {
     this.pinHitCount++;
+    
+    // Update combo display
+    if (this.pinHitCount >= 3) {
+      const combo = this.getCombo();
+      this.comboText.setText(`x${combo}`);
+      this.comboText.setVisible(true);
+      
+      // Pulse effect on combo text
+      this.scene.tweens.add({
+        targets: this.comboText,
+        scale: { from: 1.5, to: 1 },
+        duration: 200,
+        ease: 'Back.easeOut',
+      });
+    }
   }
 
   /**
@@ -80,6 +104,9 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     if (this.glowCircle && this.active) {
       this.glowCircle.setPosition(this.x, this.y);
     }
+    if (this.comboText && this.active) {
+      this.comboText.setPosition(this.x, this.y - 25);
+    }
   }
 
   /**
@@ -91,6 +118,9 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     }
     if (this.glowCircle) {
       this.glowCircle.destroy();
+    }
+    if (this.comboText) {
+      this.comboText.destroy();
     }
     super.destroy();
   }

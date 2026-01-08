@@ -75,12 +75,13 @@ export default class UIScene extends Phaser.Scene {
   updateScore(newScore) {
     this.scoreText.setText(formatScore(newScore));
 
-    // Pulse animation
+    // Pulse animation - ENHANCED
     this.tweens.add({
       targets: this.scoreText,
-      scale: 1.1,
-      duration: 100,
+      scale: 1.3,
+      duration: 150,
       yoyo: true,
+      ease: 'Back.easeOut',
     });
   }
 
