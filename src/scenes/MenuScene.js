@@ -69,11 +69,11 @@ export default class MenuScene extends Phaser.Scene {
 
     // Start button
     const startButton = this.add
-      .rectangle(centerX, 500, 300, 60, DESIGN_CONSTANTS.COLORS.ACCENT)
+      .rectangle(centerX, 760, 300, 60, DESIGN_CONSTANTS.COLORS.ACCENT)
       .setInteractive({ useHandCursor: true });
 
     const startText = this.add
-      .text(centerX, 500, TRANSLATIONS.menu.startButton, {
+      .text(centerX, 760, TRANSLATIONS.menu.startButton, {
         fontSize: "32px",
         color: "#FFFFFF",
         fontFamily: "serif",
@@ -117,7 +117,7 @@ export default class MenuScene extends Phaser.Scene {
     startButton.on("pointerdown", () => {
       this.cameras.main.fadeOut(500);
       this.time.delayedCall(500, () => {
-        this.scene.start("GameScene");
+        this.scene.start("BettingScene");
       });
     });
 
@@ -150,7 +150,7 @@ export default class MenuScene extends Phaser.Scene {
     this.add
       .text(
         centerX,
-        700,
+        900,
         TRANSLATIONS.menu.instructions,
         {
           fontSize: "20px",

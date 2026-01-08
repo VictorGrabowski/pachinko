@@ -30,6 +30,11 @@ export default class UIScene extends Phaser.Scene {
       fontFamily: "serif",
       fontStyle: "bold",
     });
+    this.creditText = this.add.text(padding, padding + 90, "クレジット: 0", {
+      fontSize: "20px",
+      color: "#F4A460",
+      fontFamily: "serif",
+    });
 
     // Lives display
     this.livesLabel = this.add
@@ -59,6 +64,7 @@ export default class UIScene extends Phaser.Scene {
     // Listen for game events
     this.gameScene.events.on("scoreUpdate", this.updateScore, this);
     this.gameScene.events.on("livesUpdate", this.updateLives, this);
+    this.gameScene.events.on("creditsUpdate", this.updateCredits, this);
   }
 
   /**
@@ -136,6 +142,10 @@ export default class UIScene extends Phaser.Scene {
     this.cameras.main.shake(200, 0.005);
   }
 
+  updateCredits(newCredits) {
+    this.creditText.setText(`クレジット: ${newCredits}`);
+  }
+
   /**
    * Create visual lives display (omamori charms)
    */
@@ -161,6 +171,7 @@ export default class UIScene extends Phaser.Scene {
     if (this.gameScene && this.gameScene.events) {
       this.gameScene.events.off("scoreUpdate", this.updateScore, this);
       this.gameScene.events.off("livesUpdate", this.updateLives, this);
+      this.gameScene.events.off("creditsUpdate", this.updateCredits, this);
     }
   }
 }

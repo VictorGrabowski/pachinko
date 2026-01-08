@@ -20,12 +20,25 @@ export default class GameScene extends Phaser.Scene {
     this.lives = DESIGN_CONSTANTS.MAX_LIVES;
     this.balls = [];
     this.activeBalls = 0;
-    
+    this.playerCredits = 0;
+    const storedBet = this.registry.get("startingBet");
+    this.selectedBet = storedBet ?? BETTING_CONFIG.betOptions[0];
+
     // Initialize FeatureManager
     FeatureManager.init();
   }
 
   create() {
+    const storedCredits = this.registry.get("startingCredits");
+    this.playerCredits =
+      typeof storedCredits === "number"
+        ? storedCredits
+        : Math.max(
+            1,
+            Math.floor(this.selectedBet * BETTING_CONFIG.exchangeRate)
+          );
+    this.registry.set("currentCredits", this.playerCredits);
+    
     // Initialize audio system (if enabled)
     if (FeatureManager.isEnabled('sounds')) {
       this.audioSystem = new AudioSystem(this);
@@ -54,6 +67,9 @@ export default class GameScene extends Phaser.Scene {
 
     // Launch UI scene in parallel
     this.scene.launch("UIScene", { gameScene: this });
+
+    // Push initial credit state to UI
+    this.events.emit("creditsUpdate", this.playerCredits);
 
     // Camera fade in
     this.cameras.main.fadeIn(500);
@@ -243,6 +259,14 @@ export default class GameScene extends Phaser.Scene {
       this.musicStarted = true;
     }
 
+    if (this.playerCredits <= 0) {
+      this.showFloatingText(400, 120, "クレジットがありません", "#FF6B35");
+      return;
+    }
+
+    this.playerCredits--;
+    this.events.emit("creditsUpdate", this.playerCredits);
+
     const ball = new Ball(this, x, 100);
     this.balls.push(ball);
     this.activeBalls++;
@@ -327,6 +351,13 @@ export default class GameScene extends Phaser.Scene {
     // Show floating score text
     this.showFloatingText(ball.x, ball.y, `+${points}`);
 
+    const creditsEarned = Math.floor(points / 25);
+    if (creditsEarned > 0) {
+      this.playerCredits += creditsEarned;
+      this.events.emit("creditsUpdate", this.playerCredits);
+      this.showFloatingText(ball.x, ball.y - 40, `+${creditsEarned}C`, "#00FF00");
+    }
+
     // Show combo text if significant
     if (combo >= DESIGN_CONSTANTS.COMBO_THRESHOLD) {
       this.showComboText(combo, ball.x);
@@ -349,11 +380,11 @@ export default class GameScene extends Phaser.Scene {
   /**
    * Show floating score text
    */
-  showFloatingText(x, y, text) {
+  showFloatingText(x, y, text, color = "#FFD700") {
     const floatingText = this.add
       .text(x, y, text, {
         fontSize: "32px",
-        color: "#FFD700",
+        color,
         fontStyle: "bold",
         stroke: "#000000",
         strokeThickness: 4,

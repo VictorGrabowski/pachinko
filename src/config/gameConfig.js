@@ -156,3 +156,8 @@ export const CREATURE_CONFIG = {
   MIN_Y: 100, // Top boundary
   MAX_Y: 800, // Bottom boundary (above buckets)
 };
+
+export const BETTING_CONFIG = {
+  exchangeRate: 0.1, // 100 yen -> 10 credits
+  betOptions: [100, 500, 1000, 5000],
+};
