@@ -29,9 +29,9 @@ export default class BootScene extends Phaser.Scene {
    * Create placeholder graphics for game entities
    */
   createPlaceholderAssets() {
-    // Ball
+    // Ball - Japanese flag red
     const ballGraphics = this.make.graphics({ x: 0, y: 0, add: false });
-    ballGraphics.fillStyle(0xf4a460);
+    ballGraphics.fillStyle(0xbc002d);
     ballGraphics.fillCircle(12, 12, 12);
     ballGraphics.generateTexture("ball", 24, 24);
     ballGraphics.destroy();
