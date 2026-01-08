@@ -145,3 +145,14 @@ export function initPalette() {
   const savedPalette = getActivePalette();
   setActivePalette(savedPalette);
 }
+
+// Creature configuration (Yokai enemy)
+export const CREATURE_CONFIG = {
+  SPEED: 70, // Movement speed in pixels/second
+  RADIUS: 18, // Collision radius
+  COLOR: 0x4a0e4e, // Dark purple
+  MIN_X: 180, // Left boundary (inside pin area)
+  MAX_X: 620, // Right boundary (inside pin area)
+  MIN_Y: 100, // Top boundary
+  MAX_Y: 800, // Bottom boundary (above buckets)
+};

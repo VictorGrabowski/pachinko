@@ -2,8 +2,10 @@ import Phaser from "phaser";
 import Ball from "../entities/Ball.js";
 import Pin from "../entities/Pin.js";
 import AudioSystem from "../systems/AudioSystem.js";
-import { DESIGN_CONSTANTS, BUCKET_CONFIG, TRANSLATIONS } from "../config/gameConfig.js";
+import Creature from "../entities/Creature.js";
+import { DESIGN_CONSTANTS, BUCKET_CONFIG, TRANSLATIONS, CREATURE_CONFIG } from "../config/gameConfig.js";
 import { applyWabiSabi, formatScore } from "../utils/helpers.js";
+import FeatureManager from "../managers/FeatureManager.js";
 
 /**
  * Main game scene - core gameplay
@@ -18,18 +20,36 @@ export default class GameScene extends Phaser.Scene {
     this.lives = DESIGN_CONSTANTS.MAX_LIVES;
     this.balls = [];
     this.activeBalls = 0;
+    
+    // Initialize FeatureManager
+    FeatureManager.init();
   }
 
   create() {
-    // Initialize audio system
-    this.audioSystem = new AudioSystem(this);
-    this.audioSystem.register("coin", { volume: 0.2 });
-    this.audioSystem.register("bgMusic", { volume: 0.3, loop: true });
-    this.musicStarted = false;
+    // Initialize audio system (if enabled)
+    if (FeatureManager.isEnabled('sounds')) {
+      this.audioSystem = new AudioSystem(this);
+      this.audioSystem.register("coin", { volume: FeatureManager.getParameter('sounds', 'volume') || 0.2 });
+      this.audioSystem.register("bgMusic", { 
+        volume: (FeatureManager.getParameter('sounds', 'volume') || 0.3) * 0.5, 
+        loop: true 
+      });
+      this.musicStarted = false;
+    } else {
+      this.audioSystem = null;
+    }
 
     this.setupBackground();
     this.createPinGrid();
     this.createBuckets();
+    
+    // Create creature only if enabled
+    if (FeatureManager.isEnabled('creature')) {
+      this.createCreature();
+    } else {
+      this.creature = null;
+    }
+    
     this.setupInput();
 
     // Launch UI scene in parallel
@@ -70,18 +90,23 @@ export default class GameScene extends Phaser.Scene {
       DESIGN_CONSTANTS.COLORS.ACCENT
     );
 
-    // Sakura petals particle system
-    this.sakura = this.add.particles(0, 0, "petal", {
-      x: { min: 0, max: 800 },
-      y: -50,
-      lifespan: 8000,
-      speedY: { min: 50, max: 100 },
-      speedX: { min: -20, max: 20 },
-      scale: { start: 0.4, end: 0.2 },
-      alpha: { start: 0.6, end: 0.2 },
-      rotate: { start: 0, end: 360 },
-      frequency: 500,
-    });
+    // Sakura petals particle system (if enabled)
+    if (FeatureManager.isEnabled('particles')) {
+      const density = FeatureManager.getParameter('particles', 'density') || 1.0;
+      this.sakura = this.add.particles(0, 0, "petal", {
+        x: { min: 0, max: 800 },
+        y: -50,
+        lifespan: 8000,
+        speedY: { min: 50, max: 100 },
+        speedX: { min: -20, max: 20 },
+        scale: { start: 0.4 * density, end: 0.2 * density },
+        alpha: { start: 0.6, end: 0.2 },
+        rotate: { start: 0, end: 360 },
+        frequency: 500 / density,
+      });
+    } else {
+      this.sakura = null;
+    }
   }
 
   /**
@@ -90,8 +115,10 @@ export default class GameScene extends Phaser.Scene {
   createPinGrid() {
     this.pins = [];
 
-    const rows = 12;
-    const cols = 8;
+    // Get pin configuration from FeatureManager
+    const rows = FeatureManager.getParameter('pins', 'rows') || 12;
+    const cols = FeatureManager.getParameter('pins', 'cols') || 8;
+    const useWabiSabi = FeatureManager.getParameter('pins', 'wabiSabi') !== false;
     const spacing = DESIGN_CONSTANTS.PIN_SPACING;
     const startY = 200;
 
@@ -100,13 +127,43 @@ export default class GameScene extends Phaser.Scene {
       const pinsInRow = cols - (row % 2);
 
       for (let col = 0; col < pinsInRow; col++) {
-        const x = applyWabiSabi(100 + col * spacing + offsetX);
-        const y = applyWabiSabi(startY + row * spacing);
+        const x = useWabiSabi ? applyWabiSabi(100 + col * spacing + offsetX) : (100 + col * spacing + offsetX);
+        const y = useWabiSabi ? applyWabiSabi(startY + row * spacing) : (startY + row * spacing);
 
         const pin = new Pin(this, x, y);
         this.pins.push(pin);
       }
     }
+  }
+
+  /**
+   * Create the yokai creature
+   */
+  createCreature() {
+    // Get creature configuration from FeatureManager
+    const speed = FeatureManager.getParameter('creature', 'speed') || CREATURE_CONFIG.SPEED;
+    const count = FeatureManager.getParameter('creature', 'count') || 1;
+    
+    // Create config with updated speed
+    const config = {
+      ...CREATURE_CONFIG,
+      SPEED: speed
+    };
+    
+    // Create multiple creatures if count > 1
+    this.creatures = [];
+    for (let i = 0; i < count; i++) {
+      // Spawn creature at center of pin area with some offset for multiple creatures
+      const centerX = (CREATURE_CONFIG.MIN_X + CREATURE_CONFIG.MAX_X) / 2;
+      const centerY = (CREATURE_CONFIG.MIN_Y + CREATURE_CONFIG.MAX_Y) / 2;
+      const offsetX = (i - (count - 1) / 2) * 100; // Spread creatures horizontally
+      
+      const creature = new Creature(this, centerX + offsetX, centerY, config);
+      this.creatures.push(creature);
+    }
+    
+    // Keep reference to first creature for backward compatibility
+    this.creature = this.creatures[0];
   }
 
   /**
@@ -181,7 +238,7 @@ export default class GameScene extends Phaser.Scene {
    */
   launchBall(x) {
     // Start background music on first user interaction (browser autoplay policy)
-    if (!this.musicStarted) {
+    if (!this.musicStarted && this.audioSystem) {
       this.audioSystem.play("bgMusic");
       this.musicStarted = true;
     }
@@ -204,6 +261,15 @@ export default class GameScene extends Phaser.Scene {
         this.onBucketHit(ball, bucket);
       });
     });
+
+    // Add overlap with creature(s) if enabled
+    if (FeatureManager.isEnabled('creature') && this.creatures) {
+      this.creatures.forEach(creature => {
+        this.physics.add.overlap(ball, creature, () => {
+          this.onCreatureEatBall(ball);
+        });
+      });
+    }
   }
 
   /**
@@ -215,12 +281,16 @@ export default class GameScene extends Phaser.Scene {
     // Visual and audio feedback
     pin.onHit();
     ball.hitPin();
-    this.audioSystem.play("coin");
+    if (this.audioSystem) {
+      this.audioSystem.play("coin");
+    }
 
-    // Increase sakura intensity with combo
-    const combo = ball.getCombo();
-    if (combo > 0) {
-      this.sakura.setFrequency(Math.max(200, 500 - combo * 50));
+    // Increase sakura intensity with combo (if particles enabled)
+    if (this.sakura) {
+      const combo = ball.getCombo();
+      if (combo > 0) {
+        this.sakura.setFrequency(Math.max(200, 500 - combo * 50));
+      }
     }
   }
 
@@ -301,6 +371,91 @@ export default class GameScene extends Phaser.Scene {
   }
 
   /**
+   * Handle creature eating ball
+   */
+  onCreatureEatBall(ball) {
+    if (!ball.active || !ball.isActive) return;
+
+    ball.isActive = false;
+    ball.setActive(false);
+
+    // Disintegration effect - explosion particles
+    const particles = this.add.particles(ball.x, ball.y, "petal", {
+      speed: { min: 100, max: 200 },
+      scale: { start: 0.6, end: 0 },
+      alpha: { start: 1, end: 0 },
+      lifespan: 500,
+      quantity: 15,
+      tint: DESIGN_CONSTANTS.COLORS.PRIMARY,
+    });
+
+    // Ball disintegration animation
+    this.tweens.add({
+      targets: ball,
+      scale: 0,
+      alpha: 0,
+      duration: 200,
+      ease: "Power2",
+    });
+
+    // Stop ball trail
+    if (ball.trail) {
+      ball.trail.stop();
+    }
+
+    // Show "Eaten!" text
+    const eatenText = this.add
+      .text(ball.x, ball.y - 30, "Eaten!", {
+        fontSize: "24px",
+        color: "#FF3333",
+        fontStyle: "bold",
+        stroke: "#000000",
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5);
+
+    this.tweens.add({
+      targets: eatenText,
+      y: ball.y - 80,
+      alpha: 0,
+      duration: 800,
+      ease: "Cubic.easeOut",
+      onComplete: () => eatenText.destroy(),
+    });
+
+    // Creature eat animation
+    this.tweens.add({
+      targets: this.creature,
+      scaleX: 1.3,
+      scaleY: 1.3,
+      duration: 150,
+      yoyo: true,
+      ease: "Back.easeOut",
+    });
+
+    // Lose a life
+    this.lives--;
+    this.events.emit("livesUpdate", this.lives);
+
+    // Clean up
+    this.time.delayedCall(200, () => {
+      ball.destroy();
+      this.balls = this.balls.filter((b) => b !== ball);
+      this.activeBalls--;
+
+      // Destroy particle emitter
+      this.time.delayedCall(500, () => {
+        particles.destroy();
+      });
+
+      // Check game over
+      if (this.lives <= 0) {
+        this.gameOver();
+      }
+    });
+  }
+
+  /**
    * Show combo achievement text
    */
   showComboText(combo, x) {
@@ -325,7 +480,12 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  update() {
+  update(time, delta) {
+    // Update creature movement
+    if (this.creature) {
+      this.creature.update(time, delta);
+    }
+
     // Check for balls that fell off screen
     this.balls.forEach((ball, index) => {
       if (ball.y > 1050 && ball.active) {

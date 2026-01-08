@@ -1,3 +1,5 @@
+import FeatureManager from '../managers/FeatureManager.js';
+
 /**
  * Audio System - manages game audio with Ma (間) concept
  * Implements strategic silence and respectful sound design
@@ -7,8 +9,16 @@ export default class AudioSystem {
     this.scene = scene;
     this.sounds = new Map();
     this.lastPlayTime = new Map();
-    this.maInterval = 150; // Minimum silence between sounds (ma concept)
-    this.enabled = true;
+    
+    // Get Ma interval from FeatureManager if available
+    this.maInterval = FeatureManager.getParameter('sounds', 'maInterval') || 150;
+    this.enabled = FeatureManager.isEnabled('sounds');
+    
+    // Set master volume from FeatureManager
+    const volume = FeatureManager.getParameter('sounds', 'volume');
+    if (volume !== undefined) {
+      this.setVolume(volume);
+    }
   }
 
   /**

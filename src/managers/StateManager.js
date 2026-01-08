@@ -65,10 +65,37 @@ export default class StateManager {
   }
 
   /**
+   * Save feature configuration
+   */
+  saveFeatureConfig(config) {
+    try {
+      localStorage.setItem(`${this.storageKey}_features`, JSON.stringify(config));
+      return true;
+    } catch (e) {
+      console.error('Failed to save feature config:', e);
+      return false;
+    }
+  }
+
+  /**
+   * Get feature configuration
+   */
+  getFeatureConfig() {
+    try {
+      const stored = localStorage.getItem(`${this.storageKey}_features`);
+      return stored ? JSON.parse(stored) : null;
+    } catch (e) {
+      console.error('Failed to load feature config:', e);
+      return null;
+    }
+  }
+
+  /**
    * Clear all saved data
    */
   clearAll() {
     localStorage.removeItem(`${this.storageKey}_high_score`);
     localStorage.removeItem(`${this.storageKey}_stats`);
+    localStorage.removeItem(`${this.storageKey}_features`);
   }
 }
