@@ -156,10 +156,11 @@ export default class ModalComponent {
       // Slider track
       const trackWidth = ((currentValue - param.min) / (param.max - param.min)) * sliderWidth;
       const sliderTrack = this.scene.add.rectangle(
-        sliderX - sliderWidth/2 + trackWidth/2, y,
+        sliderX - sliderWidth/2, y,
         trackWidth, 6,
         DESIGN_CONSTANTS.COLORS.GOLD
       );
+      sliderTrack.setOrigin(0, 0.5);
       this.container.add(sliderTrack);
 
       // Slider handle
@@ -189,10 +190,9 @@ export default class ModalComponent {
         
         sliderHandle.x = clampedX;
         
-        // Update track
+        // Update track - only change width, keep origin at left
         const newTrackWidth = clampedX - minX;
         sliderTrack.width = newTrackWidth;
-        sliderTrack.x = minX + newTrackWidth/2;
         
         // Calculate value
         const ratio = (clampedX - minX) / sliderWidth;
