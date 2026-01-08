@@ -29,6 +29,7 @@ export default class GameScene extends Phaser.Scene {
     this.activeBalls = 0;
     this.budgetManager = null;
     this.pendingTopUp = false;
+    this.isGameOver = false;
 
     // Initialize FeatureManager
     FeatureManager.init();
@@ -700,6 +701,11 @@ export default class GameScene extends Phaser.Scene {
   }
 
   update(time, delta) {
+    // Don't update if game is over or scene is shutting down
+    if (this.isGameOver || !this.scene.isActive()) {
+      return;
+    }
+
     // Update creature movement
     if (this.creature) {
       this.creature.update(time, delta);
@@ -735,14 +741,80 @@ export default class GameScene extends Phaser.Scene {
    * Handle game over
    */
   gameOver() {
+    // Prevent multiple game over calls
+    if (this.isGameOver) return;
+    this.isGameOver = true;
+
     this.physics.pause();
+
+    // Clean up creatures BEFORE stopping tweens to avoid destroy errors
+    if (this.creatures) {
+      this.creatures.forEach((creature) => {
+        if (creature && creature.active) {
+          // Kill tweens targeting this creature before destroying it
+          this.tweens.killTweensOf(creature);
+          creature.destroy();
+        }
+      });
+      this.creatures = [];
+      this.creature = null;
+    }
+
+    // Clean up balls
+    if (this.balls) {
+      this.balls.forEach((ball) => {
+        if (ball && ball.active) {
+          this.tweens.killTweensOf(ball);
+          ball.destroy();
+        }
+      });
+      this.balls = [];
+    }
+
+    // Stop all remaining tweens
+    this.tweens.killAll();
+
+    // Stop music if playing
+    if (this.audioSystem && this.musicStarted) {
+      this.audioSystem.stop("bgMusic");
+    }
+
+    // Clean up sakura particles
+    if (this.sakura) {
+      this.sakura.destroy();
+      this.sakura = null;
+    }
 
     // Mono no aware - bittersweet ending
     this.cameras.main.fadeOut(1000);
 
     this.time.delayedCall(1000, () => {
       this.scene.stop("UIScene");
+      this.scene.stop("GameScene");
       this.scene.start("GameOverScene", { score: this.score });
     });
+  }
+
+  /**
+   * Clean up resources when scene shuts down
+   */
+  shutdown() {
+    // Stop all timers
+    if (this.time) {
+      this.time.removeAllEvents();
+    }
+
+    // Stop audio system
+    if (this.audioSystem) {
+      this.audioSystem.stopAll();
+    }
+
+    // Remove all event listeners
+    if (this.events) {
+      this.events.removeAllListeners();
+    }
+
+    // Reset game over flag
+    this.isGameOver = false;
   }
 }

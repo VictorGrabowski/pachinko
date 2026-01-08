@@ -144,7 +144,10 @@ export default class Creature extends Phaser.Physics.Arcade.Sprite {
    * Cleanup on destroy
    */
   destroy() {
-    this.scene.tweens.killTweensOf(this);
+    // Only kill tweens if scene still exists and is active
+    if (this.scene && this.scene.tweens) {
+      this.scene.tweens.killTweensOf(this);
+    }
     super.destroy();
   }
 }

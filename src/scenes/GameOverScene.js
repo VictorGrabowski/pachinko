@@ -150,6 +150,10 @@ export default class GameOverScene extends Phaser.Scene {
     restartButton.on("pointerdown", () => {
       this.cameras.main.fadeOut(500);
       this.time.delayedCall(500, () => {
+        // Ensure GameScene is fully stopped before starting
+        if (this.scene.isActive("GameScene")) {
+          this.scene.stop("GameScene");
+        }
         this.scene.start("GameScene");
       });
     });
