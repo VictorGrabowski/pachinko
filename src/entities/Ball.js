@@ -17,16 +17,32 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     this.setCollideWorldBounds(false);
     this.setTint(DESIGN_CONSTANTS.COLORS.BALL);
 
-    // Visual trail for movement
+    // Visual trail for movement - SPECTACULAR EDITION
     this.trail = scene.add.particles(x, y, "particle", {
-      speed: 20,
-      scale: { start: 0.3, end: 0 },
-      alpha: { start: 0.6, end: 0 },
-      lifespan: 300,
-      tint: DESIGN_CONSTANTS.COLORS.GOLD,
+      speed: { min: 50, max: 100 },
+      scale: { start: 0.6, end: 0 },
+      alpha: { start: 1, end: 0 },
+      lifespan: 600,
+      tint: [DESIGN_CONSTANTS.COLORS.GOLD, DESIGN_CONSTANTS.COLORS.BALL, DESIGN_CONSTANTS.COLORS.SAKURA],
       follow: this,
-      quantity: 1,
-      frequency: 50,
+      quantity: 3,
+      frequency: 30,
+      blendMode: 'ADD',
+      rotate: { start: 0, end: 360 },
+    });
+
+    // Add glow effect
+    this.glowCircle = scene.add.circle(x, y, DESIGN_CONSTANTS.BALL_RADIUS * 2, DESIGN_CONSTANTS.COLORS.BALL, 0.3);
+    this.glowCircle.setBlendMode('ADD');
+    
+    // Pulsing glow animation
+    scene.tweens.add({
+      targets: this.glowCircle,
+      scale: { from: 1, to: 1.5 },
+      alpha: { from: 0.3, to: 0.1 },
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
     });
 
     this.isActive = true;
@@ -57,11 +73,24 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
   }
 
   /**
+   * Update glow position
+   */
+  preUpdate(time, delta) {
+    super.preUpdate(time, delta);
+    if (this.glowCircle && this.active) {
+      this.glowCircle.setPosition(this.x, this.y);
+    }
+  }
+
+  /**
    * Clean up particles before destroying
    */
   destroy() {
     if (this.trail) {
       this.trail.destroy();
+    }
+    if (this.glowCircle) {
+      this.glowCircle.destroy();
     }
     super.destroy();
   }

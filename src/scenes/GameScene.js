@@ -493,9 +493,27 @@ export default class GameScene extends Phaser.Scene {
       this.audioSystem.play("coin");
     }
 
+    // Screen shake effect
+    this.cameras.main.shake(50, 0.002);
+
+    // Combo effects
+    const combo = ball.getCombo();
+    if (combo > 0) {
+      // Rainbow trail for combos
+      const rainbow = this.add.particles(ball.x, ball.y, "particle", {
+        speed: { min: 50, max: 150 },
+        scale: { start: 0.8, end: 0 },
+        alpha: { start: 1, end: 0 },
+        lifespan: 500,
+        quantity: 5,
+        tint: [0xff0000, 0xff7700, 0xffff00, 0x00ff00, 0x0000ff, 0xff00ff],
+        blendMode: 'ADD',
+      });
+      this.time.delayedCall(500, () => rainbow.destroy());
+    }
+
     // Increase sakura intensity with combo (if particles enabled)
     if (this.sakura) {
-      const combo = ball.getCombo();
       if (combo > 0) {
         this.sakura.setFrequency(Math.max(200, 500 - combo * 50));
       }
@@ -516,20 +534,64 @@ export default class GameScene extends Phaser.Scene {
 
     this.score += points;
 
-    // Visual feedback
+    // Visual feedback - SPECTACULAR EDITION
     this.tweens.add({
       targets: [bucket.label, bucket.valueText],
-      scale: 1.5,
+      scale: 2,
       duration: 200,
       yoyo: true,
+      ease: 'Back.easeOut',
     });
 
     this.tweens.add({
       targets: bucket.visual,
-      alpha: 0.6,
+      alpha: 0.3,
       duration: 200,
       yoyo: true,
     });
+
+    // Explosion de particules dans le bucket
+    const explosion = this.add.particles(ball.x, ball.y, "particle", {
+      speed: { min: 200, max: 400 },
+      scale: { start: 1, end: 0 },
+      alpha: { start: 1, end: 0 },
+      lifespan: 800,
+      quantity: 30,
+      tint: [bucket.config.color, DESIGN_CONSTANTS.COLORS.GOLD, 0xffffff],
+      blendMode: 'ADD',
+      angle: { min: -120, max: -60 },
+    });
+    this.time.delayedCall(800, () => explosion.destroy());
+
+    // Flash blanc
+    const flash = this.add.rectangle(ball.x, ball.y, 100, 100, 0xffffff, 0.8);
+    flash.setBlendMode('ADD');
+    this.tweens.add({
+      targets: flash,
+      scale: 3,
+      alpha: 0,
+      duration: 300,
+      onComplete: () => flash.destroy(),
+    });
+
+    // Screen shake plus fort
+    this.cameras.main.shake(200, 0.005);
+
+    // Cercles d'onde de choc multiples
+    for (let i = 0; i < 3; i++) {
+      const wave = this.add.circle(ball.x, ball.y, 20, bucket.config.color, 0.5);
+      wave.setBlendMode('ADD');
+      this.time.delayedCall(i * 100, () => {
+        this.tweens.add({
+          targets: wave,
+          scale: 8,
+          alpha: 0,
+          duration: 600,
+          ease: 'Cubic.easeOut',
+          onComplete: () => wave.destroy(),
+        });
+      });
+    }
 
     // Show floating score text
     this.showFloatingText(ball.x, ball.y, `+${points}`);
