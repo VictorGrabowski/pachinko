@@ -382,7 +382,7 @@ export default class GameScene extends Phaser.Scene {
     });
 
     this.input.on("pointerdown", (pointer) => {
-      if (this.lives > 0 && this.activeBalls < 3 && this.ballPlaceholder.visible) {
+      if (this.lives > 0 && this.ballPlaceholder.visible) {
         // Launch ball at placeholder position (constrained)
         this.launchBall(this.ballPlaceholder.x, this.ballPlaceholder.y);
       }
@@ -413,7 +413,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Show placeholder only if cursor is near or in the start zone
     const isNearStartZone = pointer.y < this.startZone.y + this.startZone.height + 50;
-    this.ballPlaceholder.setVisible(isNearStartZone && this.lives > 0 && this.activeBalls < 3);
+    this.ballPlaceholder.setVisible(isNearStartZone && this.lives > 0);
   }
 
   /**
