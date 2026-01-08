@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import Ball from "../entities/Ball.js";
 import Pin from "../entities/Pin.js";
+import AudioSystem from "../systems/AudioSystem.js";
 import { DESIGN_CONSTANTS, BUCKET_CONFIG, TRANSLATIONS } from "../config/gameConfig.js";
 import { applyWabiSabi, formatScore } from "../utils/helpers.js";
 
@@ -20,6 +21,12 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // Initialize audio system
+    this.audioSystem = new AudioSystem(this);
+    this.audioSystem.register("coin", { volume: 0.2 });
+    this.audioSystem.register("bgMusic", { volume: 0.3, loop: true });
+    this.musicStarted = false;
+
     this.setupBackground();
     this.createPinGrid();
     this.createBuckets();
@@ -173,6 +180,12 @@ export default class GameScene extends Phaser.Scene {
    * Launch a new ball
    */
   launchBall(x) {
+    // Start background music on first user interaction (browser autoplay policy)
+    if (!this.musicStarted) {
+      this.audioSystem.play("bgMusic");
+      this.musicStarted = true;
+    }
+
     const ball = new Ball(this, x, 100);
     this.balls.push(ball);
     this.activeBalls++;
@@ -202,6 +215,7 @@ export default class GameScene extends Phaser.Scene {
     // Visual and audio feedback
     pin.onHit();
     ball.hitPin();
+    this.audioSystem.play("coin");
 
     // Increase sakura intensity with combo
     const combo = ball.getCombo();

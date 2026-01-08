@@ -53,9 +53,62 @@ export default class UIScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
+    // Mute/unmute button
+    this.createMuteButton();
+
     // Listen for game events
     this.gameScene.events.on("scoreUpdate", this.updateScore, this);
     this.gameScene.events.on("livesUpdate", this.updateLives, this);
+  }
+
+  /**
+   * Create mute/unmute button
+   */
+  createMuteButton() {
+    const padding = 30;
+    const x = 800 - padding;
+    const y = 110;
+
+    // Button background
+    this.muteButton = this.add.circle(
+      x,
+      y,
+      25,
+      DESIGN_CONSTANTS.COLORS.ACCENT,
+      0.8
+    );
+    this.muteButton.setStrokeStyle(2, 0xffffff);
+    this.muteButton.setInteractive({ useHandCursor: true });
+
+    // Button text
+    this.muteText = this.add
+      .text(x, y, "🔊", {
+        fontSize: "24px",
+      })
+      .setOrigin(0.5);
+
+    // Click handler
+    this.muteButton.on("pointerdown", () => {
+      const enabled = this.gameScene.audioSystem.toggle();
+      this.muteText.setText(enabled ? "🔊" : "🔇");
+
+      // Button feedback
+      this.tweens.add({
+        targets: this.muteButton,
+        scale: 1.2,
+        duration: 100,
+        yoyo: true,
+      });
+    });
+
+    // Hover effect
+    this.muteButton.on("pointerover", () => {
+      this.muteButton.setFillStyle(DESIGN_CONSTANTS.COLORS.ACCENT, 1);
+    });
+
+    this.muteButton.on("pointerout", () => {
+      this.muteButton.setFillStyle(DESIGN_CONSTANTS.COLORS.ACCENT, 0.8);
+    });
   }
 
   /**
