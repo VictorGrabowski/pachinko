@@ -15,7 +15,7 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     this.setCircle(DESIGN_CONSTANTS.BALL_RADIUS);
     this.setBounce(DESIGN_CONSTANTS.BOUNCE_FACTOR);
     this.setCollideWorldBounds(false);
-    this.setTint(DESIGN_CONSTANTS.COLORS.PRIMARY);
+    this.setTint(DESIGN_CONSTANTS.COLORS.SAKURA);
 
     // Visual trail for movement
     this.trail = scene.add.particles(x, y, "particle", {

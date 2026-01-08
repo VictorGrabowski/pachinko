@@ -155,6 +155,8 @@ export default class GameScene extends Phaser.Scene {
     const cols = FeatureManager.getParameter("pins", "cols") || 8;
     const useWabiSabi =
       FeatureManager.getParameter("pins", "wabiSabi") !== false;
+    const useRandomSize =
+      FeatureManager.getParameter("pins", "randomSize") === true;
     const spacing = DESIGN_CONSTANTS.PIN_SPACING;
     const startY = 200;
     
@@ -177,7 +179,9 @@ export default class GameScene extends Phaser.Scene {
         const x = useWabiSabi ? applyWabiSabi(startX + col * spacing + offsetX) : (startX + col * spacing + offsetX);
         const y = useWabiSabi ? applyWabiSabi(startY + row * spacing) : (startY + row * spacing);
 
-        const pin = new Pin(this, x, y);
+        // Apply random size if enabled (variation between 0.3 and 2.0)
+        const size = useRandomSize ? 0.3 + Math.random() * 1.7 : 1.0;
+        const pin = new Pin(this, x, y, size);
         this.pins.push(pin);
       }
     }

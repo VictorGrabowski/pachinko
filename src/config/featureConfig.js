@@ -84,6 +84,12 @@ export const FEATURES = [
         label: "Imperfections naturelles (Wabi-Sabi)",
         type: "boolean",
         default: true
+      },
+      {
+        key: "randomSize",
+        label: "Random pin size",
+        type: "boolean",
+        default: false
       }
     ]
   },
