@@ -67,7 +67,7 @@ export const FEATURES = [
         type: "number",
         default: 12,
         min: 8,
-        max: 16,
+        max: 11,
         step: 1
       },
       {

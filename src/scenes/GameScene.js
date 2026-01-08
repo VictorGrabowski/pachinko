@@ -137,13 +137,17 @@ export default class GameScene extends Phaser.Scene {
     const useWabiSabi = FeatureManager.getParameter('pins', 'wabiSabi') !== false;
     const spacing = DESIGN_CONSTANTS.PIN_SPACING;
     const startY = 200;
+    
+    // Calculate horizontal centering based on number of columns
+    const gridWidth = (cols - 1) * spacing;
+    const startX = (800 - gridWidth) / 2;
 
     for (let row = 0; row < rows; row++) {
       const offsetX = (row % 2) * (spacing / 2);
       const pinsInRow = cols - (row % 2);
 
       for (let col = 0; col < pinsInRow; col++) {
-        const x = useWabiSabi ? applyWabiSabi(100 + col * spacing + offsetX) : (100 + col * spacing + offsetX);
+        const x = useWabiSabi ? applyWabiSabi(startX + col * spacing + offsetX) : (startX + col * spacing + offsetX);
         const y = useWabiSabi ? applyWabiSabi(startY + row * spacing) : (startY + row * spacing);
 
         const pin = new Pin(this, x, y);

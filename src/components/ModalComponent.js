@@ -123,6 +123,11 @@ export default class ModalComponent {
    * @returns {Object} Control object with getValue method
    */
   createParameterControl(param, currentValue, y, modalWidth) {
+    // Clamp currentValue to min/max range
+    if (param.type === 'number') {
+      currentValue = Phaser.Math.Clamp(currentValue, param.min, param.max);
+    }
+    
     const control = {
       param: param,
       getValue: () => currentValue
