@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { DESIGN_CONSTANTS, TRANSLATIONS } from "../config/gameConfig.js";
+import { DESIGN_CONSTANTS, TRANSLATIONS, COLOR_PALETTES, getActivePalette, setActivePalette } from "../config/gameConfig.js";
 
 /**
  * Menu scene - main game menu
@@ -61,13 +61,6 @@ export default class MenuScene extends Phaser.Scene {
       .rectangle(centerX, 500, 300, 60, DESIGN_CONSTANTS.COLORS.ACCENT)
       .setInteractive({ useHandCursor: true });
 
-    const startText = this.add
-      .text(centerX, 500, TRANSLATIONS.menu.startButton, {
-        fontSize: "32px",
-        color: "#FFFFFF",
-        fontFamily: "serif",
-      })
-      .setOrigin(0.5);
 
     // Button interactions
     startButton.on("pointerover", () => {
@@ -113,6 +106,9 @@ export default class MenuScene extends Phaser.Scene {
         }
       )
       .setOrigin(0.5);
+
+    // Palette selector
+    this.createPaletteSelector(centerX);
   }
 
   /**
@@ -129,6 +125,81 @@ export default class MenuScene extends Phaser.Scene {
       alpha: { start: 0.8, end: 0.3 },
       rotate: { start: 0, end: 360 },
       frequency: 300,
+    });
+  }
+
+  /**
+   * Create palette selector
+   */
+  createPaletteSelector(centerX) {
+    // Titre
+    this.add
+      .text(centerX, 800, TRANSLATIONS.menu.paletteTitle, {
+        fontSize: "18px",
+        color: "#F4A460",
+        fontFamily: "serif",
+      })
+      .setOrigin(0.5);
+
+    // Boutons de palette
+    const paletteKeys = Object.keys(COLOR_PALETTES);
+    const activePalette = getActivePalette();
+    const buttonWidth = 120;
+    const spacing = 10;
+    const totalWidth = paletteKeys.length * (buttonWidth + spacing) - spacing;
+    const startX = centerX - totalWidth / 2;
+
+    paletteKeys.forEach((key, index) => {
+      const palette = COLOR_PALETTES[key];
+      const x = startX + index * (buttonWidth + spacing) + buttonWidth / 2;
+      const y = 850;
+      const isActive = key === activePalette;
+
+      // Bouton
+      const button = this.add
+        .rectangle(
+          x,
+          y,
+          buttonWidth,
+          50,
+          palette.colors.PRIMARY,
+          isActive ? 1 : 0.5
+        )
+        .setInteractive({ useHandCursor: true });
+
+      if (isActive) {
+        button.setStrokeStyle(3, palette.colors.GOLD);
+      }
+
+
+      // Interactions
+      button.on("pointerover", () => {
+        if (key !== getActivePalette()) {
+          button.setAlpha(0.8);
+          this.tweens.add({
+            targets: button,
+            scaleX: 1.05,
+            scaleY: 1.05,
+            duration: 150,
+          });
+        }
+      });
+
+      button.on("pointerout", () => {
+        button.setAlpha(key === getActivePalette() ? 1 : 0.5);
+        this.tweens.add({
+          targets: button,
+          scaleX: 1,
+          scaleY: 1,
+          duration: 150,
+        });
+      });
+
+      button.on("pointerdown", () => {
+        setActivePalette(key);
+        // Recharger la scène pour appliquer les nouvelles couleurs
+        this.scene.restart();
+      });
     });
   }
 }

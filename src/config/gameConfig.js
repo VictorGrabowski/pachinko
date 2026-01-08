@@ -56,6 +56,7 @@ export const TRANSLATIONS = {
     subtitle: "Le son des billes qui tombent\nRésonne dans le cœur\nBeauté japonaise",
     startButton: "Commencer",
     instructions: "Cliquez pour lancer une bille\nEnchaînez les combos pour un score élevé !",
+    paletteTitle: "Palette de couleurs",
   },
   ui: {
     score: "Score",
@@ -73,3 +74,74 @@ export const TRANSLATIONS = {
     menu: "Menu Principal",
   },
 };
+
+// Palettes de couleurs
+export const COLOR_PALETTES = {
+  classic: {
+    name: "Classique",
+    colors: {
+      PRIMARY: 0xf4a460,
+      ACCENT: 0xff6b35,
+      GOLD: 0xffd700,
+      BACKGROUND: 0x2e3a59,
+      SAKURA: 0xffb7c5,
+    },
+  },
+  ocean: {
+    name: "Océan",
+    colors: {
+      PRIMARY: 0x4fc3f7,
+      ACCENT: 0x0277bd,
+      GOLD: 0x00bcd4,
+      BACKGROUND: 0x1a237e,
+      SAKURA: 0x80deea,
+    },
+  },
+  forest: {
+    name: "Forêt",
+    colors: {
+      PRIMARY: 0x8bc34a,
+      ACCENT: 0x558b2f,
+      GOLD: 0xcddc39,
+      BACKGROUND: 0x1b5e20,
+      SAKURA: 0xaed581,
+    },
+  },
+  sunset: {
+    name: "Coucher de soleil",
+    colors: {
+      PRIMARY: 0xff7043,
+      ACCENT: 0xe91e63,
+      GOLD: 0xffc107,
+      BACKGROUND: 0x4a148c,
+      SAKURA: 0xf48fb1,
+    },
+  },
+  midnight: {
+    name: "Minuit",
+    colors: {
+      PRIMARY: 0x9575cd,
+      ACCENT: 0x5e35b1,
+      GOLD: 0xba68c8,
+      BACKGROUND: 0x1a1a2e,
+      SAKURA: 0xb39ddb,
+    },
+  },
+};
+
+// Gestion de la palette active
+export function setActivePalette(paletteName) {
+  if (COLOR_PALETTES[paletteName]) {
+    Object.assign(DESIGN_CONSTANTS.COLORS, COLOR_PALETTES[paletteName].colors);
+    localStorage.setItem('pachinko_active_palette', paletteName);
+  }
+}
+
+export function getActivePalette() {
+  return localStorage.getItem('pachinko_active_palette') || 'classic';
+}
+
+export function initPalette() {
+  const savedPalette = getActivePalette();
+  setActivePalette(savedPalette);
+}
