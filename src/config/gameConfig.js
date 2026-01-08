@@ -85,6 +85,7 @@ export const COLOR_PALETTES = {
       GOLD: 0xffd700,
       BACKGROUND: 0x2e3a59,
       SAKURA: 0xffb7c5,
+      BALL: 0xff6b35, // Red
     },
   },
   ocean: {
@@ -95,6 +96,7 @@ export const COLOR_PALETTES = {
       GOLD: 0x00bcd4,
       BACKGROUND: 0x1a237e,
       SAKURA: 0x80deea,
+      BALL: 0xff6b6b, // Yellow-orange
     },
   },
   forest: {
@@ -105,6 +107,7 @@ export const COLOR_PALETTES = {
       GOLD: 0xcddc39,
       BACKGROUND: 0x1b5e20,
       SAKURA: 0xaed581,
+      BALL: 0xff5722, // blue
     },
   },
   sunset: {
@@ -115,6 +118,7 @@ export const COLOR_PALETTES = {
       GOLD: 0xffc107,
       BACKGROUND: 0x4a148c,
       SAKURA: 0xf48fb1,
+      BALL: 0xffd700, // Gold
     },
   },
   midnight: {
@@ -125,6 +129,7 @@ export const COLOR_PALETTES = {
       GOLD: 0xba68c8,
       BACKGROUND: 0x1a1a2e,
       SAKURA: 0xb39ddb,
+      BALL: 0xff4081, // Pink accent
     },
   },
 };
