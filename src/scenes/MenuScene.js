@@ -10,8 +10,8 @@ export default class MenuScene extends Phaser.Scene {
   }
 
   create() {
-    const centerX = this.cameras.main.width / 2;
-    const centerY = this.cameras.main.height / 2;
+    const centerX = 400; // Fixed game width / 2
+    const centerY = 500; // Fixed game height / 2
 
     // Background
     this.add.rectangle(
