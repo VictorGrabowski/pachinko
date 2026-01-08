@@ -324,7 +324,6 @@ export default class GameScene extends Phaser.Scene {
   onBucketHit(ball, bucket) {
     if (!ball.active) return;
 
-    ball.isActive = false;
     ball.setActive(false);
 
     const combo = ball.getCombo();
@@ -371,7 +370,9 @@ export default class GameScene extends Phaser.Scene {
     });
 
     // Reset sakura frequency
-    this.sakura.setFrequency(500);
+    if (this.sakura) {
+      this.sakura.setFrequency(500);
+    }
 
     // Emit event for UI update
     this.events.emit("scoreUpdate", this.score);
@@ -405,9 +406,8 @@ export default class GameScene extends Phaser.Scene {
    * Handle creature eating ball
    */
   onCreatureEatBall(ball) {
-    if (!ball.active || !ball.isActive) return;
+    if (!ball.active) return;
 
-    ball.isActive = false;
     ball.setActive(false);
 
     // Disintegration effect - explosion particles
