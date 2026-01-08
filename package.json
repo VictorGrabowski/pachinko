@@ -1,0 +1,27 @@
+{
+  "name": "pachinko-game",
+  "version": "1.0.0",
+  "description": "A beautiful pachinko game with Japanese aesthetic design",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "echo \"Tests not yet implemented\" && exit 0"
+  },
+  "keywords": [
+    "phaser",
+    "pachinko",
+    "game",
+    "japanese",
+    "vite"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "phaser": "^3.80.1"
+  }
+}
