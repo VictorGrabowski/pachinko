@@ -61,6 +61,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.setupBackground();
     this.createPinGrid();
+    this.updateStartZoneFromPinGrid();
     this.createBuckets();
 
     // Create creature only if enabled
@@ -69,7 +70,10 @@ export default class GameScene extends Phaser.Scene {
     } else {
       this.creature = null;
     }
-
+    
+    // Create ball placeholder
+    this.createBallPlaceholder();
+    
     this.setupInput();
 
     // Launch UI scene in parallel
@@ -112,6 +116,14 @@ export default class GameScene extends Phaser.Scene {
       DESIGN_CONSTANTS.COLORS.ACCENT
     );
 
+    // Define starting zone boundaries (where balls spawn)
+    this.startZone = {
+      x: frameThickness,
+      y: frameThickness,
+      width: 800 - (frameThickness * 2),
+      height: 150 // Starting zone height
+    };
+
     // Sakura petals particle system (if enabled)
     if (FeatureManager.isEnabled("particles")) {
       const density =
@@ -149,6 +161,13 @@ export default class GameScene extends Phaser.Scene {
     // Calculate horizontal centering based on number of columns
     const gridWidth = (cols - 1) * spacing;
     const startX = (800 - gridWidth) / 2;
+    
+    // Store pin grid boundaries for start zone calculation
+    this.pinGridBounds = {
+      startX: startX,
+      endX: startX + gridWidth,
+      width: gridWidth
+    };
 
     for (let row = 0; row < rows; row++) {
       const offsetX = (row % 2) * (spacing / 2);
@@ -252,20 +271,85 @@ export default class GameScene extends Phaser.Scene {
   }
 
   /**
+   * Update start zone to match pin grid width
+   */
+  updateStartZoneFromPinGrid() {
+    if (this.pinGridBounds && this.startZone) {
+      // Update start zone to match pin grid horizontal boundaries
+      this.startZone.x = this.pinGridBounds.startX;
+      this.startZone.width = this.pinGridBounds.width;
+    }
+  }
+
+  /**
+   * Create ball placeholder that follows the cursor
+   */
+  createBallPlaceholder() {
+    // Create a semi-transparent ball as placeholder
+    this.ballPlaceholder = this.add.circle(
+      400, 
+      100, 
+      DESIGN_CONSTANTS.BALL_RADIUS, 
+      DESIGN_CONSTANTS.COLORS.PRIMARY, 
+      0.4
+    );
+    this.ballPlaceholder.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.GOLD, 0.6);
+    
+    // Add a subtle glow effect
+    this.ballPlaceholder.setBlendMode(Phaser.BlendModes.ADD);
+    
+    // Initially hidden until mouse enters start zone
+    this.ballPlaceholder.setVisible(false);
+  }
+
+  /**
    * Setup input handling
    */
   setupInput() {
+    // Track mouse movement for placeholder
+    this.input.on("pointermove", (pointer) => {
+      this.updateBallPlaceholder(pointer);
+    });
+    
     this.input.on("pointerdown", (pointer) => {
-      if (this.lives > 0 && this.activeBalls < 3) {
-        this.launchBall(pointer.x);
+      if (this.lives > 0 && this.activeBalls < 3 && this.ballPlaceholder.visible) {
+        // Launch ball at placeholder position (constrained)
+        this.launchBall(this.ballPlaceholder.x, this.ballPlaceholder.y);
       }
     });
   }
 
   /**
+   * Update ball placeholder position to follow cursor
+   * Constrained within the starting zone
+   */
+  updateBallPlaceholder(pointer) {
+    // Constrain X position within start zone
+    const constrainedX = Phaser.Math.Clamp(
+      pointer.x,
+      this.startZone.x + DESIGN_CONSTANTS.BALL_RADIUS,
+      this.startZone.x + this.startZone.width - DESIGN_CONSTANTS.BALL_RADIUS
+    );
+    
+    // Constrain Y position within start zone
+    const constrainedY = Phaser.Math.Clamp(
+      pointer.y,
+      this.startZone.y + DESIGN_CONSTANTS.BALL_RADIUS,
+      this.startZone.y + this.startZone.height - DESIGN_CONSTANTS.BALL_RADIUS
+    );
+    
+    // Update placeholder position
+    this.ballPlaceholder.setPosition(constrainedX, constrainedY);
+    
+    // Show placeholder only if cursor is near or in the start zone
+    const isNearStartZone = pointer.y < this.startZone.y + this.startZone.height + 50;
+    this.ballPlaceholder.setVisible(isNearStartZone && this.lives > 0 && this.activeBalls < 3);
+  }
+
+  /**
    * Launch a new ball
    */
-  launchBall(x) {
+  launchBall(x, y = 100) {
     // Start background music on first user interaction (browser autoplay policy)
     if (!this.musicStarted && this.audioSystem) {
       this.audioSystem.play("bgMusic");
@@ -285,7 +369,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.emitBudget();
 
-    const ball = new Ball(this, x, 100);
+    const ball = new Ball(this, x, y);
     this.balls.push(ball);
     this.activeBalls++;
     ball.launch();
