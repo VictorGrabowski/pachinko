@@ -3,7 +3,14 @@ import Ball from "../entities/Ball.js";
 import Pin from "../entities/Pin.js";
 import AudioSystem from "../systems/AudioSystem.js";
 import Creature from "../entities/Creature.js";
-import { DESIGN_CONSTANTS, BUCKET_CONFIG, TRANSLATIONS, CREATURE_CONFIG } from "../config/gameConfig.js";
+import {
+  DESIGN_CONSTANTS,
+  BUCKET_CONFIG,
+  TRANSLATIONS,
+  CREATURE_CONFIG,
+  BETTING_CONFIG,
+} from "../config/gameConfig.js";
+import BudgetManager from "../managers/BudgetManager.js";
 import { applyWabiSabi, formatScore } from "../utils/helpers.js";
 import FeatureManager from "../managers/FeatureManager.js";
 
@@ -20,32 +27,32 @@ export default class GameScene extends Phaser.Scene {
     this.lives = DESIGN_CONSTANTS.MAX_LIVES;
     this.balls = [];
     this.activeBalls = 0;
-    this.playerCredits = 0;
-    const storedBet = this.registry.get("startingBet");
-    this.selectedBet = storedBet ?? BETTING_CONFIG.betOptions[0];
+    this.budgetManager = null;
+    this.pendingTopUp = false;
 
     // Initialize FeatureManager
     FeatureManager.init();
   }
 
   create() {
-    const storedCredits = this.registry.get("startingCredits");
-    this.playerCredits =
-      typeof storedCredits === "number"
-        ? storedCredits
-        : Math.max(
-            1,
-            Math.floor(this.selectedBet * BETTING_CONFIG.exchangeRate)
-          );
-    this.registry.set("currentCredits", this.playerCredits);
-    
+    this.budgetManager = this.registry.get("budgetManager");
+    if (!this.budgetManager) {
+      this.budgetManager = new BudgetManager({
+        initialYen: BETTING_CONFIG.initialYen,
+        exchangeRate: BETTING_CONFIG.exchangeRate,
+      });
+      this.registry.set("budgetManager", this.budgetManager);
+    }
+
     // Initialize audio system (if enabled)
-    if (FeatureManager.isEnabled('sounds')) {
+    if (FeatureManager.isEnabled("sounds")) {
       this.audioSystem = new AudioSystem(this);
-      this.audioSystem.register("coin", { volume: FeatureManager.getParameter('sounds', 'volume') || 0.2 });
-      this.audioSystem.register("bgMusic", { 
-        volume: (FeatureManager.getParameter('sounds', 'volume') || 0.3) * 0.5, 
-        loop: true 
+      this.audioSystem.register("coin", {
+        volume: FeatureManager.getParameter("sounds", "volume") || 0.2,
+      });
+      this.audioSystem.register("bgMusic", {
+        volume: (FeatureManager.getParameter("sounds", "volume") || 0.3) * 0.5,
+        loop: true,
       });
       this.musicStarted = false;
     } else {
@@ -55,21 +62,20 @@ export default class GameScene extends Phaser.Scene {
     this.setupBackground();
     this.createPinGrid();
     this.createBuckets();
-    
+
     // Create creature only if enabled
-    if (FeatureManager.isEnabled('creature')) {
+    if (FeatureManager.isEnabled("creature")) {
       this.createCreature();
     } else {
       this.creature = null;
     }
-    
+
     this.setupInput();
 
     // Launch UI scene in parallel
     this.scene.launch("UIScene", { gameScene: this });
 
-    // Push initial credit state to UI
-    this.events.emit("creditsUpdate", this.playerCredits);
+    this.emitBudget();
 
     // Camera fade in
     this.cameras.main.fadeIn(500);
@@ -107,8 +113,9 @@ export default class GameScene extends Phaser.Scene {
     );
 
     // Sakura petals particle system (if enabled)
-    if (FeatureManager.isEnabled('particles')) {
-      const density = FeatureManager.getParameter('particles', 'density') || 1.0;
+    if (FeatureManager.isEnabled("particles")) {
+      const density =
+        FeatureManager.getParameter("particles", "density") || 1.0;
       this.sakura = this.add.particles(0, 0, "petal", {
         x: { min: 0, max: 800 },
         y: -50,
@@ -132,9 +139,10 @@ export default class GameScene extends Phaser.Scene {
     this.pins = [];
 
     // Get pin configuration from FeatureManager
-    const rows = FeatureManager.getParameter('pins', 'rows') || 12;
-    const cols = FeatureManager.getParameter('pins', 'cols') || 8;
-    const useWabiSabi = FeatureManager.getParameter('pins', 'wabiSabi') !== false;
+    const rows = FeatureManager.getParameter("pins", "rows") || 12;
+    const cols = FeatureManager.getParameter("pins", "cols") || 8;
+    const useWabiSabi =
+      FeatureManager.getParameter("pins", "wabiSabi") !== false;
     const spacing = DESIGN_CONSTANTS.PIN_SPACING;
     const startY = 200;
     
@@ -161,15 +169,16 @@ export default class GameScene extends Phaser.Scene {
    */
   createCreature() {
     // Get creature configuration from FeatureManager
-    const speed = FeatureManager.getParameter('creature', 'speed') || CREATURE_CONFIG.SPEED;
-    const count = FeatureManager.getParameter('creature', 'count') || 1;
-    
+    const speed =
+      FeatureManager.getParameter("creature", "speed") || CREATURE_CONFIG.SPEED;
+    const count = FeatureManager.getParameter("creature", "count") || 1;
+
     // Create config with updated speed
     const config = {
       ...CREATURE_CONFIG,
-      SPEED: speed
+      SPEED: speed,
     };
-    
+
     // Create multiple creatures if count > 1
     this.creatures = [];
     for (let i = 0; i < count; i++) {
@@ -177,11 +186,11 @@ export default class GameScene extends Phaser.Scene {
       const centerX = (CREATURE_CONFIG.MIN_X + CREATURE_CONFIG.MAX_X) / 2;
       const centerY = (CREATURE_CONFIG.MIN_Y + CREATURE_CONFIG.MAX_Y) / 2;
       const offsetX = (i - (count - 1) / 2) * 100; // Spread creatures horizontally
-      
+
       const creature = new Creature(this, centerX + offsetX, centerY, config);
       this.creatures.push(creature);
     }
-    
+
     // Keep reference to first creature for backward compatibility
     this.creature = this.creatures[0];
   }
@@ -263,13 +272,18 @@ export default class GameScene extends Phaser.Scene {
       this.musicStarted = true;
     }
 
-    if (this.playerCredits <= 0) {
-      this.showFloatingText(400, 120, "クレジットがありません", "#FF6B35");
+    if (!this.budgetManager || !this.budgetManager.hasCredits()) {
+      this.showFloatingText(400, 120, "No Credits", "#FF6B35");
+      this.requestAdditionalCredits();
       return;
     }
 
-    this.playerCredits--;
-    this.events.emit("creditsUpdate", this.playerCredits);
+    if (!this.budgetManager.deductCredit()) {
+      this.requestAdditionalCredits();
+      return;
+    }
+
+    this.emitBudget();
 
     const ball = new Ball(this, x, 100);
     this.balls.push(ball);
@@ -291,13 +305,29 @@ export default class GameScene extends Phaser.Scene {
     });
 
     // Add overlap with creature(s) if enabled
-    if (FeatureManager.isEnabled('creature') && this.creatures) {
-      this.creatures.forEach(creature => {
+    if (FeatureManager.isEnabled("creature") && this.creatures) {
+      this.creatures.forEach((creature) => {
         this.physics.add.overlap(ball, creature, () => {
           this.onCreatureEatBall(ball);
         });
       });
     }
+  }
+
+  requestAdditionalCredits() {
+    if (this.pendingTopUp) return;
+    this.pendingTopUp = true;
+    this.scene.launch("BettingScene", { mode: "mid-game" });
+    this.scene.pause();
+  }
+
+  clearPendingTopUp() {
+    this.pendingTopUp = false;
+  }
+
+  emitBudget() {
+    if (!this.budgetManager) return;
+    this.events.emit("budgetUpdate", this.budgetManager.getState());
   }
 
   /**
@@ -355,10 +385,15 @@ export default class GameScene extends Phaser.Scene {
     this.showFloatingText(ball.x, ball.y, `+${points}`);
 
     const creditsEarned = Math.floor(points / 25);
-    if (creditsEarned > 0) {
-      this.playerCredits += creditsEarned;
-      this.events.emit("creditsUpdate", this.playerCredits);
-      this.showFloatingText(ball.x, ball.y - 40, `+${creditsEarned}C`, "#00FF00");
+    if (creditsEarned > 0 && this.budgetManager) {
+      this.budgetManager.addCredits(creditsEarned);
+      this.emitBudget();
+      this.showFloatingText(
+        ball.x,
+        ball.y - 40,
+        `+${creditsEarned}C`,
+        "#00FF00"
+      );
     }
 
     // Show combo text if significant

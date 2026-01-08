@@ -30,8 +30,13 @@ export default class UIScene extends Phaser.Scene {
       fontFamily: "serif",
       fontStyle: "bold",
     });
-    this.creditText = this.add.text(padding, padding + 90, "クレジット: 0", {
+    this.creditText = this.add.text(padding, padding + 90, "Credits: 0", {
       fontSize: "20px",
+      color: "#F4A460",
+      fontFamily: "serif",
+    });
+    this.yenText = this.add.text(padding, padding + 120, "Balance: ¥0", {
+      fontSize: "18px",
       color: "#F4A460",
       fontFamily: "serif",
     });
@@ -58,63 +63,10 @@ export default class UIScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // Mute/unmute button
-    this.createMuteButton();
-
     // Listen for game events
     this.gameScene.events.on("scoreUpdate", this.updateScore, this);
     this.gameScene.events.on("livesUpdate", this.updateLives, this);
-    this.gameScene.events.on("creditsUpdate", this.updateCredits, this);
-  }
-
-  /**
-   * Create mute/unmute button
-   */
-  createMuteButton() {
-    const padding = 30;
-    const x = 800 - padding;
-    const y = 110;
-
-    // Button background
-    this.muteButton = this.add.circle(
-      x,
-      y,
-      25,
-      DESIGN_CONSTANTS.COLORS.ACCENT,
-      0.8
-    );
-    this.muteButton.setStrokeStyle(2, 0xffffff);
-    this.muteButton.setInteractive({ useHandCursor: true });
-
-    // Button text
-    this.muteText = this.add
-      .text(x, y, "🔊", {
-        fontSize: "24px",
-      })
-      .setOrigin(0.5);
-
-    // Click handler
-    this.muteButton.on("pointerdown", () => {
-      const enabled = this.gameScene.audioSystem.toggle();
-      this.muteText.setText(enabled ? "🔊" : "🔇");
-
-      // Button feedback
-      this.tweens.add({
-        targets: this.muteButton,
-        scale: 1.2,
-        duration: 100,
-        yoyo: true,
-      });
-    });
-
-    // Hover effect
-    this.muteButton.on("pointerover", () => {
-      this.muteButton.setFillStyle(DESIGN_CONSTANTS.COLORS.ACCENT, 1);
-    });
-
-    this.muteButton.on("pointerout", () => {
-      this.muteButton.setFillStyle(DESIGN_CONSTANTS.COLORS.ACCENT, 0.8);
-    });
+    this.gameScene.events.on("budgetUpdate", this.updateBudget, this);
   }
 
   /**
@@ -142,8 +94,9 @@ export default class UIScene extends Phaser.Scene {
     this.cameras.main.shake(200, 0.005);
   }
 
-  updateCredits(newCredits) {
-    this.creditText.setText(`クレジット: ${newCredits}`);
+  updateBudget({ credits, yen }) {
+    this.creditText.setText(`Credits: ${credits}`);
+    this.yenText.setText(`Balance: ¥${yen}`);
   }
 
   /**
@@ -171,7 +124,7 @@ export default class UIScene extends Phaser.Scene {
     if (this.gameScene && this.gameScene.events) {
       this.gameScene.events.off("scoreUpdate", this.updateScore, this);
       this.gameScene.events.off("livesUpdate", this.updateLives, this);
-      this.gameScene.events.off("creditsUpdate", this.updateCredits, this);
+      this.gameScene.events.off("budgetUpdate", this.updateBudget, this);
     }
   }
 }

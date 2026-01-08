@@ -160,4 +160,5 @@ export const CREATURE_CONFIG = {
 export const BETTING_CONFIG = {
   exchangeRate: 0.1, // 100 yen -> 10 credits
   betOptions: [100, 500, 1000, 5000],
+  initialYen: 500,
 };

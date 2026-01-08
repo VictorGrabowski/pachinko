@@ -1,15 +1,32 @@
 import Phaser from "phaser";
-import { DESIGN_CONSTANTS, TRANSLATIONS } from "../config/gameConfig.js";
+import BudgetManager from "../managers/BudgetManager.js";
 import BettingPanel from "../ui/BettingPanel.js";
+import {
+  DESIGN_CONSTANTS,
+  TRANSLATIONS,
+  BETTING_CONFIG,
+} from "../config/gameConfig.js";
 
 export default class BettingScene extends Phaser.Scene {
   constructor() {
     super({ key: "BettingScene" });
+    this.statusText = null;
+    this.mode = "pre-game";
   }
 
   create() {
+    this.mode = this.scene.settings.data?.mode ?? "pre-game";
     const centerX = 400;
     const centerY = 500;
+    this.budgetManager = this.registry.get("budgetManager");
+
+    if (!this.budgetManager) {
+      this.budgetManager = new BudgetManager({
+        initialYen: BETTING_CONFIG.initialYen,
+        exchangeRate: BETTING_CONFIG.exchangeRate,
+      });
+      this.registry.set("budgetManager", this.budgetManager);
+    }
 
     this.add.rectangle(
       centerX,
@@ -39,13 +56,28 @@ export default class BettingScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
+    this.yenText = this.add
+      .text(centerX, 320, "", {
+        fontSize: "22px",
+        color: "#F4A460",
+        fontFamily: "serif",
+      })
+      .setOrigin(0.5);
+
+    this.creditText = this.add
+      .text(centerX, 360, "", {
+        fontSize: "22px",
+        color: "#FFD700",
+        fontFamily: "serif",
+      })
+      .setOrigin(0.5);
+
     this.bettingPanel = new BettingPanel(this, {
       x: centerX,
       y: centerY,
-      onChange: (bet) => this.syncBetToRegistry(bet),
     });
 
-    this.syncBetToRegistry(this.bettingPanel.getSelectedBet());
+    this.updateBudgetLabels();
 
     const startButton = this.add
       .rectangle(centerX, 820, 280, 60, DESIGN_CONSTANTS.COLORS.ACCENT)
@@ -80,32 +112,81 @@ export default class BettingScene extends Phaser.Scene {
     });
 
     startButton.on("pointerdown", () => {
+      const betResult = this.budgetManager.placeBet(
+        this.bettingPanel.getSelectedBet()
+      );
+
+      if (!betResult.success) {
+        this.showStatus(betResult.message, "#FF6B35");
+        return;
+      }
+
+      this.updateBudgetLabels();
+      this.notifyGameSceneBudget();
+
       this.cameras.main.fadeOut(400);
       this.time.delayedCall(400, () => {
-        this.scene.start("GameScene");
+        if (this.mode === "pre-game") {
+          this.scene.start("GameScene");
+        } else {
+          const gameScene = this.scene.get("GameScene");
+          if (gameScene && typeof gameScene.clearPendingTopUp === "function") {
+            gameScene.clearPendingTopUp();
+          }
+          if (gameScene && typeof gameScene.emitBudget === "function") {
+            gameScene.emitBudget();
+          }
+          this.scene.stop();
+          this.scene.resume("GameScene");
+        }
       });
     });
 
-    this.backButton = this.add
-      .text(40, 40, "← Back", {
-        fontSize: "20px",
-        color: "#F4A460",
-        fontFamily: "serif",
-      })
-      .setInteractive({ useHandCursor: true });
+    if (this.mode === "pre-game") {
+      this.backButton = this.add
+        .text(40, 40, "← Back", {
+          fontSize: "20px",
+          color: "#F4A460",
+          fontFamily: "serif",
+        })
+        .setInteractive({ useHandCursor: true });
 
-    this.backButton.on("pointerdown", () => {
-      this.cameras.main.fadeOut(400);
-      this.time.delayedCall(400, () => {
-        this.scene.start("MenuScene");
+      this.backButton.on("pointerdown", () => {
+        this.cameras.main.fadeOut(400);
+        this.time.delayedCall(400, () => {
+          this.scene.start("MenuScene");
+        });
       });
-    });
+    }
   }
 
-  syncBetToRegistry(amount) {
-    const credits = this.bettingPanel.calculateCredits(amount);
-    this.registry.set("startingBet", amount);
-    this.registry.set("startingCredits", credits);
+  updateBudgetLabels() {
+    const { yen, credits } = this.budgetManager.getState();
+    this.yenText.setText(`Balance: ¥${yen}`);
+    this.creditText.setText(`Credits: ${credits}`);
+  }
+
+  showStatus(message, color = "#FFD700") {
+    if (this.statusText) {
+      this.statusText.destroy();
+    }
+
+    this.statusText = this.add
+      .text(400, 760, message, {
+        fontSize: "20px",
+        color,
+        fontFamily: "serif",
+      })
+      .setOrigin(0.5);
+
+    this.time.delayedCall(2000, () => this.statusText?.destroy());
+  }
+
+  notifyGameSceneBudget() {
+    const gameScene = this.scene.get("GameScene");
+    if (gameScene && typeof gameScene.emitBudget === "function") {
+      gameScene.emitBudget();
+    }
   }
 
   createSakuraEffect() {

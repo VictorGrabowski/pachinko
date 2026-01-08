@@ -1,4 +1,6 @@
 import Phaser from "phaser";
+import BudgetManager from "../managers/BudgetManager.js";
+import { BETTING_CONFIG } from "../config/gameConfig.js";
 
 /**
  * Boot scene - initializes game and prepares for asset loading
@@ -11,7 +13,14 @@ export default class BootScene extends Phaser.Scene {
   create() {
     // Create simple graphics as placeholders
     this.createPlaceholderAssets();
-    
+    this.registry.set(
+      "budgetManager",
+      new BudgetManager({
+        initialYen: BETTING_CONFIG.initialYen,
+        exchangeRate: BETTING_CONFIG.exchangeRate,
+      })
+    );
+
     // Move to preload scene
     this.scene.start("PreloadScene");
   }
