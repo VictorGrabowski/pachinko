@@ -1,0 +1,98 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+          - os: ubuntu-latest
+            platform: linux
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Electron binary (manual fallback)
+        run: node node_modules/electron/install.js
+        continue-on-error: true
+
+      - name: Build application
+        run: npm run electron:build:${{ matrix.platform }}
+
+      - name: Get version from package.json
+        id: package-version
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pachinko-${{ matrix.platform }}-${{ steps.package-version.outputs.version }}
+          path: |
+            dist-electron/*.zip
+          retention-days: 5
+
+  create-release:
+    needs: release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from package.json
+        id: package-version
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.package-version.outputs.version }}-${{ github.run_number }}
+          name: Pachinko Game v${{ steps.package-version.outputs.version }} (Build ${{ github.run_number }})
+          body: |
+            🎮 **Pachinko Game Release**
+            
+            Automatic build from commit: ${{ github.sha }}
+            
+            ### Downloads
+            - **Windows**: Extract the ZIP and run `Pachinko Game.exe`
+            - **Linux**: Extract the ZIP and run `./pachinko-game`
+            
+            ### How to play
+            1. Choose your bet
+            2. Launch balls and aim for high-value buckets
+            3. Enjoy the Japanese aesthetic!
+            
+            Built with Phaser 3 + Vite + Electron.js
+          files: |
+            artifacts/**/*.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
