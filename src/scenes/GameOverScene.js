@@ -1,6 +1,8 @@
 import Phaser from "phaser";
 import { DESIGN_CONSTANTS, TRANSLATIONS } from "../config/gameConfig.js";
 import { formatScore } from "../utils/helpers.js";
+import StateManager from "../managers/StateManager.js";
+import LanguageManager from "../managers/LanguageManager.js";
 
 /**
  * Game Over Scene - displays final score and restart option
@@ -11,7 +13,11 @@ export default class GameOverScene extends Phaser.Scene {
   }
 
   init(data) {
-    this.finalScore = data.score || 0;
+    this.finalScore = data.balanceMax || 0;
+    this.username = data.username || "Player";
+    this.cycleEnded = data.cycleEnded || false;
+    this.stateManager = new StateManager();
+    this.languageManager = LanguageManager;
   }
 
   create() {
@@ -43,7 +49,7 @@ export default class GameOverScene extends Phaser.Scene {
 
     // Game Over text
     const gameOverText = this.add
-      .text(centerX, 200, TRANSLATIONS.gameOver.title, {
+      .text(centerX, 200, this.languageManager.getText('gameOver.title'), {
         fontSize: "72px",
         color: "#F4A460",
         fontFamily: "serif",
@@ -54,7 +60,7 @@ export default class GameOverScene extends Phaser.Scene {
 
     // Haiku-inspired message (mono no aware)
     const haiku = this.add
-      .text(centerX, 280, TRANSLATIONS.gameOver.haiku, {
+      .text(centerX, 280, this.languageManager.getText('gameOver.haiku'), {
         fontSize: "20px",
         color: "#F4A460",
         fontFamily: "serif",
@@ -66,7 +72,7 @@ export default class GameOverScene extends Phaser.Scene {
 
     // Score display
     const finalScoreLabel = this.add
-      .text(centerX, 420, TRANSLATIONS.gameOver.finalScore, {
+      .text(centerX, 420, this.languageManager.getText('gameOver.finalScore'), {
         fontSize: "24px",
         color: "#F4A460",
         fontFamily: "serif",
@@ -84,14 +90,62 @@ export default class GameOverScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setAlpha(0);
 
+    // Rank display (if in top 10)
+    let rankText = null;
+    const rank = this.getRank();
+    if (rank !== null) {
+      const isNewHighScore = rank === 1 && this.finalScore > 0;
+      const rankMessage = isNewHighScore 
+        ? this.languageManager.getText('gameOver.newHighScore')
+        : `${this.languageManager.getText('gameOver.yourRank')}: #${rank}`;
+      
+      rankText = this.add
+        .text(centerX, 550, rankMessage, {
+          fontSize: "24px",
+          color: isNewHighScore ? "#00FF00" : "#F4A460",
+          fontFamily: "serif",
+          fontStyle: isNewHighScore ? "bold" : "normal",
+        })
+        .setOrigin(0.5)
+        .setAlpha(0);
+      
+      // Add glow effect for new high score
+      if (isNewHighScore) {
+        this.tweens.add({
+          targets: rankText,
+          scale: 1.1,
+          duration: 1000,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut",
+        });
+      }
+    }
+
+    // Scoreboard button
+    const scoreboardButton = this.add
+      .rectangle(centerX, 650, 300, 60, DESIGN_CONSTANTS.COLORS.GOLD)
+      .setInteractive({ useHandCursor: true })
+      .setAlpha(0);
+
+    const scoreboardText = this.add
+      .text(centerX, 650, this.languageManager.getText('gameOver.viewScoreboard'), {
+        fontSize: "24px",
+        color: "#000000",
+        fontFamily: "serif",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setAlpha(0);
+
     // Restart button
     const restartButton = this.add
-      .rectangle(centerX, 650, 300, 60, DESIGN_CONSTANTS.COLORS.ACCENT)
+      .rectangle(centerX, 740, 300, 60, DESIGN_CONSTANTS.COLORS.ACCENT)
       .setInteractive({ useHandCursor: true })
       .setAlpha(0);
 
     const restartText = this.add
-      .text(centerX, 650, TRANSLATIONS.gameOver.restart, {
+      .text(centerX, 740, this.languageManager.getText('gameOver.restart'), {
         fontSize: "28px",
         color: "#FFFFFF",
         fontFamily: "serif",
@@ -101,12 +155,12 @@ export default class GameOverScene extends Phaser.Scene {
 
     // Menu button
     const menuButton = this.add
-      .rectangle(centerX, 740, 300, 60, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.5)
+      .rectangle(centerX, 830, 300, 60, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.5)
       .setInteractive({ useHandCursor: true })
       .setAlpha(0);
 
     const menuText = this.add
-      .text(centerX, 740, TRANSLATIONS.gameOver.menu, {
+      .text(centerX, 830, this.languageManager.getText('gameOver.menu'), {
         fontSize: "28px",
         color: "#FFFFFF",
         fontFamily: "serif",
@@ -115,16 +169,55 @@ export default class GameOverScene extends Phaser.Scene {
       .setAlpha(0);
 
     // Fade in animations
-    this.fadeInElements([
+    const elementsToFade = [
       { target: gameOverText, delay: 0 },
       { target: haiku, delay: 500 },
       { target: finalScoreLabel, delay: 1000 },
       { target: scoreText, delay: 1200 },
+    ];
+    
+    if (rankText) {
+      elementsToFade.push({ target: rankText, delay: 1400 });
+    }
+    
+    elementsToFade.push(
+      { target: scoreboardButton, delay: 1600 },
+      { target: scoreboardText, delay: 1600 },
       { target: restartButton, delay: 1800 },
       { target: restartText, delay: 1800 },
       { target: menuButton, delay: 2000 },
-      { target: menuText, delay: 2000 },
-    ]);
+      { target: menuText, delay: 2000 }
+    );
+    
+    this.fadeInElements(elementsToFade);
+
+    // Scoreboard button interactions
+    scoreboardButton.on("pointerover", () => {
+      scoreboardButton.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY);
+      this.tweens.add({
+        targets: scoreboardButton,
+        scaleX: 1.05,
+        scaleY: 1.05,
+        duration: 150,
+      });
+    });
+
+    scoreboardButton.on("pointerout", () => {
+      scoreboardButton.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
+      this.tweens.add({
+        targets: scoreboardButton,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 150,
+      });
+    });
+
+    scoreboardButton.on("pointerdown", () => {
+      this.cameras.main.fadeOut(500);
+      this.time.delayedCall(500, () => {
+        this.scene.start("ScoreboardScene");
+      });
+    });
 
     // Button interactions
     restartButton.on("pointerover", () => {
@@ -199,5 +292,26 @@ export default class GameOverScene extends Phaser.Scene {
         ease: "Sine.easeInOut",
       });
     });
+  }
+
+  /**
+   * Get player's rank in top 10, or null if not ranked
+   * @returns {number|null} Rank (1-10) or null
+   */
+  getRank() {
+    const topScores = this.stateManager.getTopScores();
+    
+    // Find this player's score entry (most recent with same username and score)
+    const playerEntry = topScores.find(
+      entry => entry.username === this.username && entry.score === this.finalScore
+    );
+    
+    if (!playerEntry) {
+      return null;
+    }
+    
+    // Get rank (1-based index)
+    const rank = topScores.indexOf(playerEntry) + 1;
+    return rank <= 10 ? rank : null;
   }
 }

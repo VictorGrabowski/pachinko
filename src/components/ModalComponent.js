@@ -46,18 +46,27 @@ export default class ModalComponent {
     dimmer.setInteractive();
     this.container.add(dimmer);
 
-    // Modal background
+    // Calculate modal height based on parameters
     const modalWidth = 600;
-    const modalHeight = 500;
+    const numParams = feature.parameters ? feature.parameters.length : 0;
+    // Base: title(80) + desc(60) + buttons(100) = 240, each param adds 70
+    const baseHeight = 240;
+    const paramHeight = numParams * 70;
+    const modalHeight = Math.min(800, Math.max(400, baseHeight + paramHeight));
+    const modalCenterY = 500;
+    const modalTop = modalCenterY - modalHeight / 2;
+    const modalBottom = modalCenterY + modalHeight / 2;
+    
+    // Modal background
     const modalBg = this.scene.add.rectangle(
-      400, 500, modalWidth, modalHeight,
+      400, modalCenterY, modalWidth, modalHeight,
       DESIGN_CONSTANTS.COLORS.BACKGROUND
     );
     modalBg.setStrokeStyle(3, DESIGN_CONSTANTS.COLORS.GOLD);
     this.container.add(modalBg);
 
     // Title
-    const title = this.scene.add.text(400, 280, feature.name, {
+    const title = this.scene.add.text(400, modalTop + 40, feature.name, {
       fontSize: "32px",
       fontFamily: "serif",
       color: "#ffd700",
@@ -66,7 +75,7 @@ export default class ModalComponent {
     this.container.add(title);
 
     // Description
-    const desc = this.scene.add.text(400, 320, feature.description, {
+    const desc = this.scene.add.text(400, modalTop + 80, feature.description, {
       fontSize: "16px",
       fontFamily: "serif",
       color: "#ffb7c5",
@@ -76,7 +85,7 @@ export default class ModalComponent {
     this.container.add(desc);
 
     // Generate parameter controls
-    let yPos = 360;
+    let yPos = modalTop + 120;
     if (feature.parameters && feature.parameters.length > 0) {
       feature.parameters.forEach(param => {
         const control = this.createParameterControl(
@@ -90,7 +99,7 @@ export default class ModalComponent {
       });
     } else {
       // No parameters message
-      const noParams = this.scene.add.text(400, 380, "Pas de paramètres configurables", {
+      const noParams = this.scene.add.text(400, modalTop + 160, "Pas de paramètres configurables", {
         fontSize: "18px",
         fontFamily: "serif",
         color: "#888888",
@@ -100,7 +109,7 @@ export default class ModalComponent {
     }
 
     // Buttons
-    this.createButtons(modalWidth);
+    this.createButtons(modalWidth, modalBottom);
 
     this.isVisible = true;
 
@@ -263,9 +272,10 @@ export default class ModalComponent {
   /**
    * Create save/cancel buttons
    * @param {number} modalWidth - Modal width
+   * @param {number} modalBottom - Modal bottom Y position
    */
-  createButtons(modalWidth) {
-    const buttonY = 680;
+  createButtons(modalWidth, modalBottom) {
+    const buttonY = modalBottom - 35;
 
     // Cancel button
     const cancelBtn = this.scene.add.rectangle(

@@ -3,10 +3,11 @@ import Ball from "../entities/Ball.js";
 import Pin from "../entities/Pin.js";
 import AudioSystem from "../systems/AudioSystem.js";
 import Creature from "../entities/Creature.js";
+import StateManager from "../managers/StateManager.js";
+import LanguageManager from "../managers/LanguageManager.js";
 import {
   DESIGN_CONSTANTS,
   BUCKET_CONFIG,
-  TRANSLATIONS,
   CREATURE_CONFIG,
   BETTING_CONFIG,
 } from "../config/gameConfig.js";
@@ -20,6 +21,7 @@ import FeatureManager from "../managers/FeatureManager.js";
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super({ key: "GameScene" });
+    this.languageManager = LanguageManager;
   }
 
   init() {
@@ -50,6 +52,8 @@ export default class GameScene extends Phaser.Scene {
       this.audioSystem = new AudioSystem(this);
       this.audioSystem.register("coin", {
         volume: FeatureManager.getParameter("sounds", "volume") || 0.2,
+        rate: 0.8, // Slower playback for deeper bass
+        detune: -400, // Lower pitch for more bass
       });
       this.audioSystem.register("bgMusic", {
         volume: (FeatureManager.getParameter("sounds", "volume") || 0.3) * 0.5,
@@ -85,8 +89,6 @@ export default class GameScene extends Phaser.Scene {
 
     // Launch UI scene in parallel
     this.scene.launch("UIScene", { gameScene: this });
-
-    this.emitBudget();
 
     // Camera fade in
     this.cameras.main.fadeIn(500);
@@ -426,23 +428,13 @@ export default class GameScene extends Phaser.Scene {
       this.musicStarted = true;
     }
 
-    if (!this.budgetManager || !this.budgetManager.hasCredits()) {
-      this.showFloatingText(400, 120, "No Credits", "#FF6B35");
-      this.requestAdditionalCredits();
-      return;
-    }
-
-    if (!this.budgetManager.deductCredit()) {
-      this.requestAdditionalCredits();
-      return;
-    }
-
-    this.emitBudget();
-
     const ball = new Ball(this, x, y);
     this.balls.push(ball);
     this.activeBalls++;
     ball.launch();
+    
+    // Emit ball state change to disable CASH OUT button
+    this.scene.get('UIScene').events.emit('ballStateChange', true);
 
     // Add collision with pins - un seul collider pour tout le groupe
     this.physics.add.collider(ball, this.pins, this.onPinHit, null, this);
@@ -464,21 +456,7 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  requestAdditionalCredits() {
-    if (this.pendingTopUp) return;
-    this.pendingTopUp = true;
-    this.scene.launch("BettingScene", { mode: "mid-game" });
-    this.scene.pause();
-  }
 
-  clearPendingTopUp() {
-    this.pendingTopUp = false;
-  }
-
-  emitBudget() {
-    if (!this.budgetManager) return;
-    this.events.emit("budgetUpdate", this.budgetManager.getState());
-  }
 
   /**
    * Handle pin collision
@@ -596,18 +574,6 @@ export default class GameScene extends Phaser.Scene {
     // Show floating score text
     this.showFloatingText(ball.x, ball.y, `+${points}`);
 
-    const creditsEarned = Math.floor(points / 25);
-    if (creditsEarned > 0 && this.budgetManager) {
-      this.budgetManager.addCredits(creditsEarned);
-      this.emitBudget();
-      this.showFloatingText(
-        ball.x,
-        ball.y - 40,
-        `+${creditsEarned}C`,
-        "#00FF00"
-      );
-    }
-
     // Show combo text if significant
     if (combo >= DESIGN_CONSTANTS.COMBO_THRESHOLD) {
       this.showComboText(combo, ball.x);
@@ -618,6 +584,11 @@ export default class GameScene extends Phaser.Scene {
       ball.destroy();
       this.balls = this.balls.filter((b) => b !== ball);
       this.activeBalls--;
+      
+      // Re-enable CASH OUT button if no more active balls
+      if (this.activeBalls === 0) {
+        this.scene.get('UIScene').events.emit('ballStateChange', false);
+      }
     });
 
     // Reset sakura frequency
@@ -724,6 +695,11 @@ export default class GameScene extends Phaser.Scene {
       ball.destroy();
       this.balls = this.balls.filter((b) => b !== ball);
       this.activeBalls--;
+      
+      // Re-enable CASH OUT button if no more active balls
+      if (this.activeBalls === 0) {
+        this.scene.get('UIScene').events.emit('ballStateChange', false);
+      }
 
       // Destroy particle emitter
       this.time.delayedCall(500, () => {
@@ -742,7 +718,7 @@ export default class GameScene extends Phaser.Scene {
    */
   showComboText(combo, x) {
     const comboText = this.add
-      .text(x, 400, `${combo} ${TRANSLATIONS.game.combo}!`, {
+      .text(x, 400, `${combo} ${this.languageManager.getText('game.combo')}!`, {
         fontSize: "48px",
         color: "#FF6B35",
         fontStyle: "bold",
@@ -789,6 +765,11 @@ export default class GameScene extends Phaser.Scene {
         this.balls.splice(index, 1);
         this.activeBalls--;
         this.lives--;
+        
+        // Re-enable CASH OUT button if no more active balls
+        if (this.activeBalls === 0) {
+          this.scene.get('UIScene').events.emit('ballStateChange', false);
+        }
 
         this.events.emit("livesUpdate", this.lives);
 
@@ -800,10 +781,27 @@ export default class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Handle game over
+   * Handle cash out (fin volontaire de partie)
+   */
+  cashOut() {
+    if (this.isGameOver) return;
+    this.endGame(true); // true = cash out
+  }
+
+  /**
+   * Handle game over (5 vies épuisées)
    */
   gameOver() {
-    // Prevent multiple game over calls
+    if (this.isGameOver) return;
+    this.endGame(false); // false = game over naturel
+  }
+
+  /**
+   * End game and calculate winnings
+   * @param {boolean} isCashOut - True if player cashed out, false if game over
+   */
+  endGame(isCashOut) {
+    // Prevent multiple calls
     if (this.isGameOver) return;
     this.isGameOver = true;
 
@@ -813,7 +811,6 @@ export default class GameScene extends Phaser.Scene {
     if (this.creatures) {
       this.creatures.forEach((creature) => {
         if (creature && creature.active) {
-          // Kill tweens targeting this creature before destroying it
           this.tweens.killTweensOf(creature);
           creature.destroy();
         }
@@ -847,13 +844,39 @@ export default class GameScene extends Phaser.Scene {
       this.sakura = null;
     }
 
+    // Calculate winnings
+    const winningsResult = this.budgetManager.addWinnings(this.score);
+    const canContinue = this.budgetManager.canContinue();
+
     // Mono no aware - bittersweet ending
     this.cameras.main.fadeOut(1000);
 
     this.time.delayedCall(1000, () => {
       this.scene.stop("UIScene");
       this.scene.stop("GameScene");
-      this.scene.start("GameOverScene", { score: this.score });
+
+      if (!canContinue) {
+        // Balance < 100 : Fin du cycle, GameOverScene
+        const username = this.registry.get("currentUsername") || "Player";
+        const stateManager = new StateManager();
+        stateManager.saveScoreEntry({
+          username: username,
+          score: winningsResult.balanceMax,
+          date: new Date().toISOString()
+        });
+
+        this.scene.start("GameOverScene", {
+          score: this.score,
+          winnings: winningsResult.winnings,
+          balance: winningsResult.newBalance,
+          balanceMax: winningsResult.balanceMax,
+          username: username,
+          cycleEnded: true
+        });
+      } else {
+        // Balance >= 100 : Retour à BettingScene
+        this.scene.start("BettingScene");
+      }
     });
   }
 

@@ -1,62 +1,142 @@
+/**
+ * Budget Manager - Gère la balance (Yens), les mises et les gains
+ * Système de multiplicateurs : 100→x1, 200→x2, 1000→x10, 2000→x20
+ */
 export default class BudgetManager {
-  constructor({ initialYen = 1000, exchangeRate = 0.1 } = {}) {
-    this.yenBalance = initialYen;
-    this.credits = 0;
-    this.exchangeRate = exchangeRate;
+  constructor({ initialBalance = 1000 } = {}) {
+    this.balance = initialBalance; // Balance en Yens
+    this.balanceMax = initialBalance; // Balance maximum atteinte dans le cycle
+    this.currentBet = 0; // Mise actuelle
+    this.currentMultiplier = 1; // Multiplicateur actuel
   }
 
+  /**
+   * Définir les multiplicateurs selon la mise
+   */
+  static MULTIPLIERS = {
+    100: 1,
+    200: 2,
+    1000: 10,
+    2000: 20
+  };
+
+  /**
+   * Récupérer l'état actuel
+   */
   getState() {
     return {
-      yen: this.yenBalance,
-      credits: this.credits,
+      balance: this.balance,
+      balanceMax: this.balanceMax,
+      currentBet: this.currentBet,
+      currentMultiplier: this.currentMultiplier
     };
   }
 
-  getYen() {
-    return this.yenBalance;
+  /**
+   * Obtenir la balance
+   */
+  getBalance() {
+    return this.balance;
   }
 
-  getCredits() {
-    return this.credits;
+  /**
+   * Obtenir la balance max du cycle
+   */
+  getBalanceMax() {
+    return this.balanceMax;
   }
 
-  hasCredits() {
-    return this.credits > 0;
+  /**
+   * Obtenir le multiplicateur actuel
+   */
+  getMultiplier() {
+    return this.currentMultiplier;
   }
 
-  placeBet(yenAmount) {
-    if (yenAmount <= 0) {
-      return { success: false, message: "無効な賭け金です" };
+  /**
+   * Obtenir la mise actuelle
+   */
+  getCurrentBet() {
+    return this.currentBet;
+  }
+
+  /**
+   * Placer une mise et obtenir le multiplicateur
+   * @param {number} betAmount - Montant de la mise (100, 200, 1000, 2000)
+   * @returns {Object} Résultat de la mise
+   */
+  placeBet(betAmount) {
+    if (![100, 200, 1000, 2000].includes(betAmount)) {
+      return { 
+        success: false, 
+        message: "Mise invalide. Choisissez 100, 200, 1000 ou 2000 Yens." 
+      };
     }
 
-    if (yenAmount > this.yenBalance) {
-      return { success: false, message: "円の残高が不足しています" };
+    if (betAmount > this.balance) {
+      return { 
+        success: false, 
+        message: "Balance insuffisante pour cette mise." 
+      };
     }
 
-    const credits = Math.max(1, Math.floor(yenAmount * this.exchangeRate));
-    this.yenBalance -= yenAmount;
-    this.credits += credits;
+    // Déduire la mise
+    this.balance -= betAmount;
+    this.currentBet = betAmount;
+    this.currentMultiplier = BudgetManager.MULTIPLIERS[betAmount];
 
     return {
       success: true,
-      creditsAdded: credits,
-      credits: this.credits,
-      yenRemaining: this.yenBalance,
+      bet: this.currentBet,
+      multiplier: this.currentMultiplier,
+      remainingBalance: this.balance
     };
   }
 
-  deductCredit() {
-    if (this.credits <= 0) {
-      return false;
+  /**
+   * Ajouter les gains en fin de partie (cash out ou game over)
+   * @param {number} score - Score de la partie
+   * @returns {Object} Résultat avec nouvelle balance
+   */
+  addWinnings(score) {
+    const winnings = score * this.currentMultiplier;
+    this.balance += winnings;
+
+    // Mettre à jour balance max si dépassée
+    if (this.balance > this.balanceMax) {
+      this.balanceMax = this.balance;
     }
-    this.credits = Math.max(0, this.credits - 1);
-    return true;
+
+    return {
+      winnings,
+      newBalance: this.balance,
+      balanceMax: this.balanceMax,
+      isNewRecord: this.balance === this.balanceMax
+    };
   }
 
-  addCredits(amount) {
-    if (amount <= 0) {
-      return;
-    }
-    this.credits += amount;
+  /**
+   * Vérifier si la balance permet de continuer (>= 100)
+   */
+  canContinue() {
+    return this.balance >= 100;
+  }
+
+  /**
+   * Reset pour un nouveau cycle (balance à 1000)
+   */
+  resetCycle() {
+    this.balance = 1000;
+    this.balanceMax = 1000;
+    this.currentBet = 0;
+    this.currentMultiplier = 1;
+  }
+
+  /**
+   * Reset la mise actuelle (pour nouvelle partie dans le même cycle)
+   */
+  resetBet() {
+    this.currentBet = 0;
+    this.currentMultiplier = 1;
   }
 }

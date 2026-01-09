@@ -20,3 +20,6 @@ export const applyWabiSabi = (value, jitterAmount = 3) => {
 export const formatScore = (score) => {
   return score.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
+
+// Alias for formatScore (for number formatting in general)
+export const formatNumber = formatScore;

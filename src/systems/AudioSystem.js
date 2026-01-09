@@ -8,11 +8,13 @@ export default class AudioSystem {
   constructor(scene) {
     this.scene = scene;
     this.sounds = new Map();
+    this.soundConfigs = new Map(); // Store configs for creating new instances
     this.lastPlayTime = new Map();
     
     // Get Ma interval from FeatureManager if available
     this.maInterval = FeatureManager.getParameter('sounds', 'maInterval') || 150;
     this.enabled = FeatureManager.isEnabled('sounds');
+    this.allowOverlap = FeatureManager.getParameter('sounds', 'allowOverlap') || false;
     
     // Set master volume from FeatureManager
     const volume = FeatureManager.getParameter('sounds', 'volume');
@@ -29,15 +31,26 @@ export default class AudioSystem {
     
     const sound = this.scene.sound.add(key, config);
     this.sounds.set(key, sound);
+    this.soundConfigs.set(key, config); // Store config for later use
     this.lastPlayTime.set(key, 0);
     return sound;
   }
 
   /**
-   * Play a sound with Ma (間) consideration
+   * Play a sound with Ma (間) consideration or allow overlap
    */
   play(key, config = {}) {
     if (!this.enabled) return;
+    
+    // If overlap is allowed for this sound (e.g., pin hits), create new instance
+    if (this.allowOverlap && key === 'coin') {
+      // Merge stored config with runtime config
+      const storedConfig = this.soundConfigs.get(key) || {};
+      const finalConfig = { ...storedConfig, ...config };
+      // Use scene.sound.play() to create a new sound instance each time
+      this.scene.sound.play(key, finalConfig);
+      return true;
+    }
     
     const sound = this.sounds.get(key);
     if (!sound) return;
@@ -98,6 +111,13 @@ export default class AudioSystem {
     if (this.scene.sound.volume !== undefined) {
       this.scene.sound.volume = Math.max(0, Math.min(1, volume));
     }
+  }
+
+  /**
+   * Update allowOverlap setting
+   */
+  setAllowOverlap(value) {
+    this.allowOverlap = value;
   }
 
   /**

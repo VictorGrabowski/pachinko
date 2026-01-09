@@ -7,6 +7,7 @@ import BettingScene from './scenes/BettingScene.js';
 import GameScene from './scenes/GameScene.js';
 import UIScene from './scenes/UIScene.js';
 import GameOverScene from './scenes/GameOverScene.js';
+import ScoreboardScene from './scenes/ScoreboardScene.js';
 
 // Initialiser la palette sauvegardée
 initPalette();
@@ -19,7 +20,8 @@ GAME_CONFIG.scene = [
   BettingScene,
   GameScene,
   UIScene,
-  GameOverScene
+  GameOverScene,
+  ScoreboardScene
 ];
 
 // Initialize the Phaser game

@@ -152,6 +152,12 @@ export const FEATURES = [
         min: 50,
         max: 500,
         step: 50
+      },
+      {
+        key: "allowOverlap",
+        label: "Superposition des sons (pins)",
+        type: "boolean",
+        default: false
       }
     ]
   },
@@ -179,9 +185,9 @@ export const FEATURES = [
 
 // Category labels for UI grouping
 export const CATEGORY_LABELS = {
-  gameplay: "⚙️ Gameplay",
-  audio: "🔊 Audio",
-  visual: "✨ Visuels"
+  gameplay: "GAMEPLAY",
+  audio: "AUDIO",
+  visual: "VISUELS"
 };
 
 // Helper function to get features by category

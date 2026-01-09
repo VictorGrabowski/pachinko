@@ -1,31 +1,45 @@
 import Phaser from "phaser";
 import BudgetManager from "../managers/BudgetManager.js";
-import BettingPanel from "../ui/BettingPanel.js";
+import UsernameInputOverlay from "../ui/UsernameInputOverlay.js";
+import LanguageManager from "../managers/LanguageManager.js";
 import {
   DESIGN_CONSTANTS,
-  TRANSLATIONS,
-  BETTING_CONFIG,
 } from "../config/gameConfig.js";
 
 export default class BettingScene extends Phaser.Scene {
   constructor() {
     super({ key: "BettingScene" });
     this.statusText = null;
-    this.mode = "pre-game";
+    this.usernameOverlay = null;
+    this.languageManager = LanguageManager;
+    this.selectedBet = 100; // Mise par défaut
   }
 
   create() {
-    this.mode = this.scene.settings.data?.mode ?? "pre-game";
     const centerX = 400;
     const centerY = 500;
     this.budgetManager = this.registry.get("budgetManager");
 
     if (!this.budgetManager) {
-      this.budgetManager = new BudgetManager({
-        initialYen: BETTING_CONFIG.initialYen,
-        exchangeRate: BETTING_CONFIG.exchangeRate,
-      });
+      this.budgetManager = new BudgetManager({ initialBalance: 1000 });
       this.registry.set("budgetManager", this.budgetManager);
+    }
+
+    // Check if username is already set
+    const currentUsername = this.registry.get("currentUsername");
+    
+    // If no username, show username input overlay (début de cycle)
+    if (!currentUsername) {
+      this.usernameOverlay = new UsernameInputOverlay(this, (username) => {
+        this.registry.set("currentUsername", username);
+        this.usernameOverlay = null;
+      });
+      
+      this.time.delayedCall(300, () => {
+        if (this.usernameOverlay) {
+          this.usernameOverlay.show();
+        }
+      });
     }
 
     this.add.rectangle(
@@ -38,8 +52,9 @@ export default class BettingScene extends Phaser.Scene {
 
     this.createSakuraEffect();
 
+    // Title
     this.add
-      .text(centerX, 200, "Place your bet", {
+      .text(centerX, 150, "Placer votre mise", {
         fontSize: "48px",
         color: "#FFD700",
         fontFamily: "serif",
@@ -47,54 +62,57 @@ export default class BettingScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    this.add
-      .text(centerX, 260, "Convert yen into credits before you play", {
-        fontSize: "20px",
-        color: "#F4A460",
-        fontFamily: "serif",
-        align: "center",
-      })
-      .setOrigin(0.5);
-
-    this.yenText = this.add
-      .text(centerX, 320, "", {
+    // Username display
+    const username = this.registry.get("currentUsername") || "Joueur";
+    this.usernameText = this.add
+      .text(centerX, 220, `Joueur : ${username}`, {
         fontSize: "22px",
         color: "#F4A460",
         fontFamily: "serif",
       })
       .setOrigin(0.5);
 
-    this.creditText = this.add
-      .text(centerX, 360, "", {
-        fontSize: "22px",
+    // Balance display
+    this.balanceText = this.add
+      .text(centerX, 260, "", {
+        fontSize: "28px",
         color: "#FFD700",
         fontFamily: "serif",
+        fontStyle: "bold",
       })
       .setOrigin(0.5);
 
-    this.bettingPanel = new BettingPanel(this, {
-      x: centerX,
-      y: centerY,
-    });
+    this.balanceMaxText = this.add
+      .text(centerX, 300, "", {
+        fontSize: "18px",
+        color: "#F4A460",
+        fontFamily: "serif",
+      })
+      .setOrigin(0.5);
 
-    this.updateBudgetLabels();
+    this.updateBalanceDisplay();
 
+    // Betting options
+    this.createBettingOptions(centerX, centerY);
+
+    // Start button
     const startButton = this.add
-      .rectangle(centerX, 820, 280, 60, DESIGN_CONSTANTS.COLORS.ACCENT)
+      .rectangle(centerX, 780, 300, 60, DESIGN_CONSTANTS.COLORS.ACCENT)
       .setInteractive({ useHandCursor: true });
 
-    this.add
-      .text(centerX, 820, TRANSLATIONS.menu.startButton, {
-        fontSize: "32px",
+    this.startButtonText = this.add
+      .text(centerX, 780, "Commencer la partie", {
+        fontSize: "28px",
         color: "#FFFFFF",
         fontFamily: "serif",
+        fontStyle: "bold",
       })
       .setOrigin(0.5);
 
     startButton.on("pointerover", () => {
       startButton.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
       this.tweens.add({
-        targets: startButton,
+        targets: [startButton, this.startButtonText],
         scaleX: 1.05,
         scaleY: 1.05,
         duration: 150,
@@ -104,7 +122,7 @@ export default class BettingScene extends Phaser.Scene {
     startButton.on("pointerout", () => {
       startButton.setFillStyle(DESIGN_CONSTANTS.COLORS.ACCENT);
       this.tweens.add({
-        targets: startButton,
+        targets: [startButton, this.startButtonText],
         scaleX: 1,
         scaleY: 1,
         duration: 150,
@@ -112,58 +130,144 @@ export default class BettingScene extends Phaser.Scene {
     });
 
     startButton.on("pointerdown", () => {
-      const betResult = this.budgetManager.placeBet(
-        this.bettingPanel.getSelectedBet()
-      );
+      const betResult = this.budgetManager.placeBet(this.selectedBet);
 
       if (!betResult.success) {
         this.showStatus(betResult.message, "#FF6B35");
         return;
       }
 
-      this.updateBudgetLabels();
-      this.notifyGameSceneBudget();
-
       this.cameras.main.fadeOut(400);
       this.time.delayedCall(400, () => {
-        if (this.mode === "pre-game") {
-          this.scene.start("GameScene");
-        } else {
-          const gameScene = this.scene.get("GameScene");
-          if (gameScene && typeof gameScene.clearPendingTopUp === "function") {
-            gameScene.clearPendingTopUp();
-          }
-          if (gameScene && typeof gameScene.emitBudget === "function") {
-            gameScene.emitBudget();
-          }
-          this.scene.stop();
-          this.scene.resume("GameScene");
-        }
+        this.scene.start("GameScene");
       });
     });
 
-    if (this.mode === "pre-game") {
-      this.backButton = this.add
-        .text(40, 40, "← Back", {
-          fontSize: "20px",
-          color: "#F4A460",
-          fontFamily: "serif",
-        })
-        .setInteractive({ useHandCursor: true });
+    // Change username button
+    const changeUsernameBtn = this.add
+      .rectangle(centerX, 860, 250, 50, DESIGN_CONSTANTS.COLORS.PRIMARY)
+      .setInteractive({ useHandCursor: true });
 
-      this.backButton.on("pointerdown", () => {
-        this.cameras.main.fadeOut(400);
-        this.time.delayedCall(400, () => {
-          this.scene.start("MenuScene");
-        });
+    this.add
+      .text(centerX, 860, "Changer de pseudo", {
+        fontSize: "20px",
+        color: "#FFFFFF",
+        fontFamily: "serif",
+      })
+      .setOrigin(0.5);
+
+    changeUsernameBtn.on("pointerover", () => {
+      changeUsernameBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
+    });
+
+    changeUsernameBtn.on("pointerout", () => {
+      changeUsernameBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY);
+    });
+
+    changeUsernameBtn.on("pointerdown", () => {
+      this.usernameOverlay = new UsernameInputOverlay(this, (newUsername) => {
+        this.registry.set("currentUsername", newUsername);
+        this.usernameText.setText(`Joueur : ${newUsername}`);
+        this.usernameOverlay = null;
       });
-    }
+      this.usernameOverlay.show();
+    });
+
+    // Back button
+    this.backButton = this.add
+      .text(40, 40, "← Menu", {
+        fontSize: "20px",
+        color: "#F4A460",
+        fontFamily: "serif",
+      })
+      .setInteractive({ useHandCursor: true });
+
+    this.backButton.on("pointerdown", () => {
+      this.cameras.main.fadeOut(400);
+      this.time.delayedCall(400, () => {
+        this.scene.start("MenuScene");
+      });
+    });
   }
 
-  updateBudgetLabels() {
-    const { yen, credits } = this.budgetManager.getState();
-    this.yenText.setText(`Balance: ¥${yen}`);
-    this.creditText.setText(`Credits: ${credits}`);
+  createBettingOptions(centerX, centerY) {
+    const betOptions = [
+      { amount: 100, multiplier: "x1" },
+      { amount: 200, multiplier: "x2" },
+      { amount: 1000, multiplier: "x10" },
+      { amount: 2000, multiplier: "x20" }
+    ];
+
+    const buttonWidth = 160;
+    const buttonHeight = 100;
+    const spacing = 20;
+    const totalWidth = (buttonWidth * 4) + (spacing * 3);
+    const startX = centerX - totalWidth / 2;
+    const y = 480;
+
+    this.betButtons = [];
+
+    betOptions.forEach((option, index) => {
+      const x = startX + (buttonWidth / 2) + index * (buttonWidth + spacing);
+      
+      const isSelected = option.amount === this.selectedBet;
+      const button = this.add.rectangle(
+        x, y,
+        buttonWidth, buttonHeight,
+        isSelected ? DESIGN_CONSTANTS.COLORS.GOLD : DESIGN_CONSTANTS.COLORS.PRIMARY
+      );
+      button.setStrokeStyle(3, DESIGN_CONSTANTS.COLORS.GOLD);
+      button.setInteractive({ useHandCursor: true });
+
+      const amountText = this.add.text(x, y - 15, `${option.amount} ¥`, {
+        fontSize: "28px",
+        color: isSelected ? "#000000" : "#FFFFFF",
+        fontFamily: "serif",
+        fontStyle: "bold",
+      }).setOrigin(0.5);
+
+      const multiplierText = this.add.text(x, y + 20, option.multiplier, {
+        fontSize: "24px",
+        color: isSelected ? "#000000" : "#FFD700",
+        fontFamily: "serif",
+      }).setOrigin(0.5);
+
+      button.on("pointerdown", () => {
+        this.selectBet(option.amount);
+      });
+
+      button.on("pointerover", () => {
+        if (option.amount !== this.selectedBet) {
+          button.setFillStyle(DESIGN_CONSTANTS.COLORS.ACCENT);
+        }
+      });
+
+      button.on("pointerout", () => {
+        if (option.amount !== this.selectedBet) {
+          button.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY);
+        }
+      });
+
+      this.betButtons.push({ button, amountText, multiplierText, amount: option.amount });
+    });
+  }
+
+  selectBet(amount) {
+    this.selectedBet = amount;
+    
+    this.betButtons.forEach(btn => {
+      const isSelected = btn.amount === amount;
+      btn.button.setFillStyle(isSelected ? DESIGN_CONSTANTS.COLORS.GOLD : DESIGN_CONSTANTS.COLORS.PRIMARY);
+      btn.amountText.setColor(isSelected ? "#000000" : "#FFFFFF");
+      btn.multiplierText.setColor(isSelected ? "#000000" : "#FFD700");
+    });
+  }
+
+  updateBalanceDisplay() {
+    const balance = this.budgetManager.getBalance();
+    const balanceMax = this.budgetManager.getBalanceMax();
+    this.balanceText.setText(`Balance: ${balance} ¥`);
+    this.balanceMaxText.setText(`Record: ${balanceMax} ¥`);
   }
 
   showStatus(message, color = "#FFD700") {
@@ -172,7 +276,7 @@ export default class BettingScene extends Phaser.Scene {
     }
 
     this.statusText = this.add
-      .text(400, 760, message, {
+      .text(400, 720, message, {
         fontSize: "20px",
         color,
         fontFamily: "serif",
@@ -180,13 +284,6 @@ export default class BettingScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.time.delayedCall(2000, () => this.statusText?.destroy());
-  }
-
-  notifyGameSceneBudget() {
-    const gameScene = this.scene.get("GameScene");
-    if (gameScene && typeof gameScene.emitBudget === "function") {
-      gameScene.emitBudget();
-    }
   }
 
   createSakuraEffect() {
@@ -201,5 +298,12 @@ export default class BettingScene extends Phaser.Scene {
       rotate: { start: 0, end: 360 },
       frequency: 300,
     });
+  }
+
+  shutdown() {
+    if (this.usernameOverlay) {
+      this.usernameOverlay.hide();
+      this.usernameOverlay = null;
+    }
   }
 }
