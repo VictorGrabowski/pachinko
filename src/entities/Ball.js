@@ -5,17 +5,25 @@ import { DESIGN_CONSTANTS } from "../config/gameConfig.js";
  * Ball entity with trail effect and wabi-sabi aesthetic
  */
 export default class Ball extends Phaser.Physics.Arcade.Sprite {
-  constructor(scene, x, y) {
+  constructor(scene, x, y, radius = DESIGN_CONSTANTS.BALL_RADIUS) {
     super(scene, x, y, "ball");
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    // Physics properties
-    this.setCircle(DESIGN_CONSTANTS.BALL_RADIUS);
+    // Store radius for dynamic sizing
+    this.ballRadius = radius;
+
+    // Physics properties - use 80% of radius for hitbox to prevent blocking
+    const hitboxRadius = this.ballRadius * 0.8;
+    this.setCircle(hitboxRadius);
     this.setBounce(DESIGN_CONSTANTS.BOUNCE_FACTOR);
     this.setCollideWorldBounds(false);
     this.setTint(DESIGN_CONSTANTS.COLORS.BALL);
+
+    // Scale sprite to match radius (sprite is designed for BALL_RADIUS = 12)
+    const scale = this.ballRadius / DESIGN_CONSTANTS.BALL_RADIUS;
+    this.setScale(scale);
 
     // Visual trail for movement - SPECTACULAR EDITION
     this.trail = scene.add.particles(x, y, "particle", {
@@ -61,10 +69,15 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
   /**
    * Launch the ball with initial velocity
    */
-  launch(velocityX = 0) {
-    // Add slight randomness for organic feel (wabi-sabi)
-    const randomX = velocityX + Phaser.Math.Between(-50, 50);
-    this.setVelocity(randomX, 0);
+  launch(velocityX = 0, velocityY = 0) {
+    // Add slight randomness for organic feel (wabi-sabi) if no specific velocity set
+    if (velocityY === 0) {
+      const randomX = velocityX + Phaser.Math.Between(-50, 50);
+      this.setVelocity(randomX, 0);
+    } else {
+      // Use exact velocities for hardcore mode
+      this.setVelocity(velocityX, velocityY);
+    }
   }
 
   /**

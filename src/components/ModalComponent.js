@@ -32,6 +32,7 @@ export default class ModalComponent {
       this.hide();
     }
 
+    this.currentFeature = feature; // Store feature for reset functionality
     this.onSaveCallback = onSave;
     this.parameterControls = [];
     
@@ -213,6 +214,10 @@ export default class ModalComponent {
       });
 
       control.getValue = () => currentValue;
+      // Store references for reset functionality
+      control.track = sliderTrack;
+      control.handle = sliderHandle;
+      control.valueText = valueText;
 
     } else if (param.type === 'boolean') {
       // Toggle control
@@ -264,6 +269,13 @@ export default class ModalComponent {
       });
 
       control.getValue = () => currentValue;
+      // Store references for reset functionality
+      control.toggleBg = toggleBg;
+      control.toggleHandle = toggleHandle;
+      control.toggleX = toggleX;
+      control.stateText = stateText;
+
+      control.getValue = () => currentValue;
     }
 
     return control;
@@ -279,30 +291,46 @@ export default class ModalComponent {
 
     // Cancel button
     const cancelBtn = this.scene.add.rectangle(
-      300, buttonY, 140, 50,
+      250, buttonY, 140, 50,
       0x555555
     );
     cancelBtn.setStrokeStyle(2, 0xffffff);
-    cancelBtn.setInteractive();
+    cancelBtn.setInteractive({ useHandCursor: true });
     this.container.add(cancelBtn);
 
-    const cancelText = this.scene.add.text(300, buttonY, "Annuler", {
+    const cancelText = this.scene.add.text(250, buttonY, "Annuler", {
       fontSize: "20px",
       fontFamily: "serif",
       color: "#ffffff"
     }).setOrigin(0.5);
     this.container.add(cancelText);
 
+    // Reset to Default button
+    const resetBtn = this.scene.add.rectangle(
+      400, buttonY, 140, 50,
+      0x4a5568
+    );
+    resetBtn.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.PRIMARY);
+    resetBtn.setInteractive({ useHandCursor: true });
+    this.container.add(resetBtn);
+
+    const resetText = this.scene.add.text(400, buttonY, "Par défaut", {
+      fontSize: "18px",
+      fontFamily: "serif",
+      color: "#ffffff"
+    }).setOrigin(0.5);
+    this.container.add(resetText);
+
     // Save button
     const saveBtn = this.scene.add.rectangle(
-      500, buttonY, 140, 50,
+      550, buttonY, 140, 50,
       DESIGN_CONSTANTS.COLORS.GOLD
     );
     saveBtn.setStrokeStyle(2, 0xffffff);
-    saveBtn.setInteractive();
+    saveBtn.setInteractive({ useHandCursor: true });
     this.container.add(saveBtn);
 
-    const saveText = this.scene.add.text(500, buttonY, "Enregistrer", {
+    const saveText = this.scene.add.text(550, buttonY, "Enregistrer", {
       fontSize: "20px",
       fontFamily: "serif",
       color: "#000000",
@@ -323,6 +351,26 @@ export default class ModalComponent {
     cancelBtn.on('pointerout', () => {
       this.scene.tweens.add({
         targets: cancelBtn,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 100
+      });
+    });
+
+    resetBtn.on('pointerover', () => {
+      resetBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY);
+      this.scene.tweens.add({
+        targets: [resetBtn, resetText],
+        scaleX: 1.05,
+        scaleY: 1.05,
+        duration: 100
+      });
+    });
+
+    resetBtn.on('pointerout', () => {
+      resetBtn.setFillStyle(0x4a5568);
+      this.scene.tweens.add({
+        targets: [resetBtn, resetText],
         scaleX: 1,
         scaleY: 1,
         duration: 100
@@ -352,6 +400,10 @@ export default class ModalComponent {
       this.hide();
     });
 
+    resetBtn.on('pointerdown', () => {
+      this.resetToDefaults();
+    });
+
     saveBtn.on('pointerdown', () => {
       this.save();
     });
@@ -371,6 +423,80 @@ export default class ModalComponent {
       this.onSaveCallback(values);
     }
     this.hide();
+  }
+
+  /**
+   * Reset all parameters to their default values
+   */
+  resetToDefaults() {
+    if (!this.currentFeature || !this.currentFeature.parameters) {
+      return;
+    }
+
+    // Update all controls with default values
+    this.parameterControls.forEach(control => {
+      const param = control.param;
+      const defaultValue = param.default;
+
+      if (param.type === 'number') {
+        // Update the control's getValue to return default
+        control.getValue = () => defaultValue;
+
+        // Find and update the visual elements
+        const sliderTrack = control.track;
+        const sliderHandle = control.handle;
+        const valueText = control.valueText;
+
+        if (sliderTrack && sliderHandle && valueText) {
+          const sliderWidth = 300;
+          const trackWidth = ((defaultValue - param.min) / (param.max - param.min)) * sliderWidth;
+          
+          // Animate to default position
+          this.scene.tweens.add({
+            targets: sliderTrack,
+            width: trackWidth,
+            duration: 300,
+            ease: 'Power2'
+          });
+
+          const handleX = 350 - sliderWidth/2 + trackWidth;
+          this.scene.tweens.add({
+            targets: sliderHandle,
+            x: handleX,
+            duration: 300,
+            ease: 'Power2'
+          });
+
+          valueText.setText(defaultValue.toFixed(param.step < 1 ? 1 : 0));
+        }
+      } else if (param.type === 'boolean') {
+        // Update toggle
+        control.getValue = () => defaultValue;
+        
+        const toggleBg = control.toggleBg;
+        const toggleHandle = control.toggleHandle;
+        const toggleX = control.toggleX;
+        const stateText = control.stateText;
+        
+        if (toggleBg && toggleHandle && stateText) {
+          toggleBg.setFillStyle(defaultValue ? DESIGN_CONSTANTS.COLORS.GOLD : 0x555555);
+          
+          const targetX = defaultValue ? toggleX + 15 : toggleX - 15;
+          this.scene.tweens.add({
+            targets: toggleHandle,
+            x: targetX,
+            duration: 200,
+            ease: 'Power2'
+          });
+
+          stateText.setText(defaultValue ? "ON" : "OFF");
+          stateText.setColor(defaultValue ? "#ffd700" : "#888888");
+        }
+      }
+    });
+
+    // Visual feedback
+    this.scene.cameras.main.flash(200, 100, 200, 100, false);
   }
 
   /**

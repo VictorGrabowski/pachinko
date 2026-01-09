@@ -251,3 +251,20 @@ export const BETTING_CONFIG = {
   betOptions: [100, 500, 1000, 5000],
   initialYen: 500,
 };
+
+// Hardcore Launch Mode Configuration
+export const HARDCORE_LAUNCH = {
+  SIZE_MIN: 8,
+  SIZE_MAX: 20,
+  SIZE_SPEED: 1500, // ms pour un cycle complet
+  ANGLE_MIN: -45, // degrés
+  ANGLE_MAX: 45,
+  ANGLE_SPEED: 2000,
+  FORCE_MIN: 50,
+  FORCE_MAX: 400,
+  FORCE_SPEED: 1800,
+  ARROW_LENGTH: 60, // Longueur de la flèche d'angle
+  GAUGE_WIDTH: 200,
+  GAUGE_HEIGHT: 20,
+  GAUGE_Y_OFFSET: 50, // Position Y relative en haut de l'écran
+};

@@ -10,6 +10,7 @@ import {
   BUCKET_CONFIG,
   CREATURE_CONFIG,
   BETTING_CONFIG,
+  HARDCORE_LAUNCH,
 } from "../config/gameConfig.js";
 import BudgetManager from "../managers/BudgetManager.js";
 import { applyWabiSabi, formatScore } from "../utils/helpers.js";
@@ -35,6 +36,14 @@ export default class GameScene extends Phaser.Scene {
 
     // Initialize FeatureManager
     FeatureManager.init();
+
+    // Hardcore launch mode state
+    this.hardcoreMode = false;
+    this.hardcoreState = {
+      currentSize: DESIGN_CONSTANTS.BALL_RADIUS,
+      currentAngle: 0,
+      currentForce: 0,
+    };
   }
 
   create() {
@@ -84,6 +93,12 @@ export default class GameScene extends Phaser.Scene {
 
     // Create ball placeholder
     this.createBallPlaceholder();
+
+    // Initialize hardcore launch mode if enabled
+    this.hardcoreMode = FeatureManager.isEnabled("hardcore_launch");
+    if (this.hardcoreMode) {
+      this.initHardcoreLaunchMode();
+    }
 
     this.setupInput();
 
@@ -375,6 +390,74 @@ export default class GameScene extends Phaser.Scene {
   }
 
   /**
+   * Initialize hardcore launch mode with oscillating cursors
+   */
+  initHardcoreLaunchMode() {
+    const minSize = FeatureManager.getParameter("hardcore_launch", "minSize") || HARDCORE_LAUNCH.SIZE_MIN;
+    const maxSize = FeatureManager.getParameter("hardcore_launch", "maxSize") || HARDCORE_LAUNCH.SIZE_MAX;
+    const minAngle = FeatureManager.getParameter("hardcore_launch", "minAngle") || HARDCORE_LAUNCH.ANGLE_MIN;
+    const maxAngle = FeatureManager.getParameter("hardcore_launch", "maxAngle") || HARDCORE_LAUNCH.ANGLE_MAX;
+    const minForce = FeatureManager.getParameter("hardcore_launch", "minForce") || HARDCORE_LAUNCH.FORCE_MIN;
+    const maxForce = FeatureManager.getParameter("hardcore_launch", "maxForce") || HARDCORE_LAUNCH.FORCE_MAX;
+    const sizeSpeed = FeatureManager.getParameter("hardcore_launch", "sizeSpeed") || HARDCORE_LAUNCH.SIZE_SPEED;
+    const angleSpeed = FeatureManager.getParameter("hardcore_launch", "angleSpeed") || HARDCORE_LAUNCH.ANGLE_SPEED;
+    const forceSpeed = FeatureManager.getParameter("hardcore_launch", "forceSpeed") || HARDCORE_LAUNCH.FORCE_SPEED;
+
+    // Store min/max for force calculation
+    this.hardcoreParams = { minForce, maxForce };
+
+    // Initialize current values at midpoint
+    this.hardcoreState.currentSize = (minSize + maxSize) / 2;
+    this.hardcoreState.currentAngle = 0;
+    this.hardcoreState.currentForce = (minForce + maxForce) / 2;
+
+    // Create oscillator for SIZE (affects ball placeholder radius)
+    this.tweens.add({
+      targets: this.hardcoreState,
+      currentSize: { from: minSize, to: maxSize },
+      duration: sizeSpeed,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.inOut',
+      onUpdate: () => {
+        // Update ball placeholder size
+        this.ballPlaceholder.setRadius(this.hardcoreState.currentSize);
+        // Notify UIScene to update size indicator
+        this.scene.get('UIScene').events.emit('hardcoreSizeUpdate', this.hardcoreState.currentSize);
+      }
+    });
+
+    // Create oscillator for ANGLE
+    this.tweens.add({
+      targets: this.hardcoreState,
+      currentAngle: { from: minAngle, to: maxAngle },
+      duration: angleSpeed,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.inOut',
+      onUpdate: () => {
+        // Notify UIScene to update angle arrow
+        this.scene.get('UIScene').events.emit('hardcoreAngleUpdate', this.hardcoreState.currentAngle);
+      }
+    });
+
+    // Create oscillator for FORCE
+    this.tweens.add({
+      targets: this.hardcoreState,
+      currentForce: { from: minForce, to: maxForce },
+      duration: forceSpeed,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.inOut',
+      onUpdate: () => {
+        // Notify UIScene to update force gauge
+        const forcePercent = ((this.hardcoreState.currentForce - minForce) / (maxForce - minForce)) * 100;
+        this.scene.get('UIScene').events.emit('hardcoreForceUpdate', forcePercent);
+      }
+    });
+  }
+
+  /**
    * Setup input handling
    */
   setupInput() {
@@ -413,6 +496,11 @@ export default class GameScene extends Phaser.Scene {
     // Update placeholder position
     this.ballPlaceholder.setPosition(constrainedX, constrainedY);
 
+    // Update angle arrow position in hardcore mode
+    if (this.hardcoreMode) {
+      this.scene.get('UIScene').events.emit('hardcorePlaceholderMove', constrainedX, constrainedY);
+    }
+
     // Show placeholder only if cursor is near or in the start zone
     const isNearStartZone = pointer.y < this.startZone.y + this.startZone.height + 50;
     this.ballPlaceholder.setVisible(isNearStartZone && this.lives > 0);
@@ -428,10 +516,23 @@ export default class GameScene extends Phaser.Scene {
       this.musicStarted = true;
     }
 
-    const ball = new Ball(this, x, y);
+    // Create ball with appropriate size
+    const ballSize = this.hardcoreMode ? this.hardcoreState.currentSize : DESIGN_CONSTANTS.BALL_RADIUS;
+    const ball = new Ball(this, x, y, ballSize);
     this.balls.push(ball);
     this.activeBalls++;
-    ball.launch();
+
+    // Launch with hardcore parameters or normal mode
+    if (this.hardcoreMode) {
+      // Calculate velocity from angle and force
+      const angleRad = Phaser.Math.DegToRad(this.hardcoreState.currentAngle);
+      const velocityX = Math.sin(angleRad) * this.hardcoreState.currentForce;
+      const velocityY = Math.cos(angleRad) * this.hardcoreState.currentForce * 0.5; // Downward component
+      console.log(`Hardcore launch: angle=${this.hardcoreState.currentAngle.toFixed(1)}°, force=${this.hardcoreState.currentForce.toFixed(1)}, vX=${velocityX.toFixed(1)}, vY=${velocityY.toFixed(1)}`);
+      ball.launch(velocityX, velocityY);
+    } else {
+      ball.launch();
+    }
     
     // Emit ball state change to disable CASH OUT button
     this.scene.get('UIScene').events.emit('ballStateChange', true);

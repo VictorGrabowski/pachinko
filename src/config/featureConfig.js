@@ -180,6 +180,96 @@ export const FEATURES = [
         step: 0.1
       }
     ]
+  },
+  {
+    id: "hardcore_launch",
+    name: "Mode Hardcore - Lancement",
+    description: "Active le mode de lancement hardcore avec 3 curseurs oscillants (taille, angle, force)",
+    category: "gameplay",
+    enabled: false,
+    parameters: [
+      {
+        key: "sizeSpeed",
+        label: "Vitesse oscillation taille",
+        type: "number",
+        default: 1500,
+        min: 500,
+        max: 3000,
+        step: 100
+      },
+      {
+        key: "angleSpeed",
+        label: "Vitesse oscillation angle",
+        type: "number",
+        default: 2000,
+        min: 500,
+        max: 3000,
+        step: 100
+      },
+      {
+        key: "forceSpeed",
+        label: "Vitesse oscillation force",
+        type: "number",
+        default: 1800,
+        min: 500,
+        max: 3000,
+        step: 100
+      },
+      {
+        key: "minSize",
+        label: "Taille minimum",
+        type: "number",
+        default: 8,
+        min: 4,
+        max: 12,
+        step: 1
+      },
+      {
+        key: "maxSize",
+        label: "Taille maximum",
+        type: "number",
+        default: 20,
+        min: 12,
+        max: 30,
+        step: 1
+      },
+      {
+        key: "minAngle",
+        label: "Angle minimum (degrés)",
+        type: "number",
+        default: -45,
+        min: -90,
+        max: 0,
+        step: 5
+      },
+      {
+        key: "maxAngle",
+        label: "Angle maximum (degrés)",
+        type: "number",
+        default: 45,
+        min: 0,
+        max: 90,
+        step: 5
+      },
+      {
+        key: "minForce",
+        label: "Force minimum",
+        type: "number",
+        default: 50,
+        min: 0,
+        max: 200,
+        step: 10
+      },
+      {
+        key: "maxForce",
+        label: "Force maximum",
+        type: "number",
+        default: 400,
+        min: 200,
+        max: 800,
+        step: 50
+      }
+    ]
   }
 ];
 

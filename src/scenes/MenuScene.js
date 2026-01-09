@@ -623,9 +623,7 @@ export default class MenuScene extends Phaser.Scene {
         feature.enabled ? DESIGN_CONSTANTS.COLORS.PRIMARY : 0x444444
       );
       configBtn.setStrokeStyle(2, feature.enabled ? DESIGN_CONSTANTS.COLORS.GOLD : 0x666666);
-      if (feature.enabled) {
-        configBtn.setInteractive({ useHandCursor: true });
-      }
+      configBtn.setInteractive({ useHandCursor: true }); // Always make interactive if has parameters
       container.add(configBtn);
 
       configText = this.add.text(configBtnX, y, "Configurer", {
@@ -636,9 +634,9 @@ export default class MenuScene extends Phaser.Scene {
       }).setOrigin(0.5);
       container.add(configText);
 
-      // Configure button click
-      if (feature.enabled) {
-        configBtn.on('pointerover', () => {
+      // Configure button click - always attach if has parameters
+      configBtn.on('pointerover', () => {
+        if (feature.enabled) {
           configBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
           configText.setColor("#000000");
           this.tweens.add({
@@ -648,9 +646,11 @@ export default class MenuScene extends Phaser.Scene {
             duration: 120,
             ease: 'Back.easeOut'
           });
-        });
+        }
+      });
 
-        configBtn.on('pointerout', () => {
+      configBtn.on('pointerout', () => {
+        if (feature.enabled) {
           configBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY);
           configText.setColor("#ffffff");
           this.tweens.add({
@@ -659,12 +659,14 @@ export default class MenuScene extends Phaser.Scene {
             scaleY: 1,
             duration: 120
           });
-        });
+        }
+      });
 
-        configBtn.on('pointerdown', () => {
+      configBtn.on('pointerdown', () => {
+        if (feature.enabled) {
           this.openFeatureConfigModal(feature);
-        });
-      }
+        }
+      });
     }
 
     // Checkbox toggle click
