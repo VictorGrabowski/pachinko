@@ -1,0 +1,41 @@
+appId: com.pachinko.game
+productName: Pachinko Game
+directories:
+  output: dist-electron
+  buildResources: build
+
+files:
+  - dist/**/*
+  - electron/**/*
+  - package.json
+
+win:
+  target:
+    - target: zip
+      arch:
+        - x64
+  icon: build/icon.png
+  artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+
+mac:
+  target:
+    - target: zip
+      arch:
+        - x64
+        - arm64
+  icon: build/icon.png
+  artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+
+linux:
+  target:
+    - target: zip
+      arch:
+        - x64
+  icon: build/icon.png
+  artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+
+# CRITICAL for itch.io: Disable code signing
+electronDownload:
+  mirror: https://github.com/electron/electron/releases/download/
+
+forceCodeSigning: false

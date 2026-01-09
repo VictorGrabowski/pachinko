@@ -12,9 +12,9 @@ export default class PreloadScene extends Phaser.Scene {
     // Create loading bar
     this.createLoadingBar();
 
-    // Load audio assets
-    this.load.audio("coin", "/assets/coin.mp3");
-    this.load.audio("bgMusic", "/assets/bgMusic.mp3");
+    // Load audio assets (relative paths for Electron compatibility)
+    this.load.audio("coin", "assets/coin.mp3");
+    this.load.audio("bgMusic", "assets/bgMusic.mp3");
   }
 
   create() {
