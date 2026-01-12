@@ -247,7 +247,15 @@ export default class GameOverScene extends Phaser.Scene {
         if (this.scene.isActive("GameScene")) {
           this.scene.stop("GameScene");
         }
-        this.scene.start("GameScene");
+        
+        // Reset budget cycle to 1000 Yen for new game
+        const budgetManager = this.registry.get("budgetManager");
+        if (budgetManager) {
+          budgetManager.resetCycle();
+        }
+        
+        // Go to BettingScene to place new bet
+        this.scene.start("BettingScene");
       });
     });
 

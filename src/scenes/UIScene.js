@@ -126,7 +126,8 @@ export default class UIScene extends Phaser.Scene {
     // Listen for game events
     this.gameScene.events.on("scoreUpdate", this.updateScore, this);
     this.gameScene.events.on("livesUpdate", this.updateLives, this);
-    this.gameScene.events.on("ballStateChange", this.updateCashOutButton, this);
+    // ballStateChange is emitted to UIScene.events from GameScene
+    this.events.on("ballStateChange", this.updateCashOutButton, this);
     
     // Listen for hardcore mode events
     if (FeatureManager.isEnabled("hardcore_launch")) {
