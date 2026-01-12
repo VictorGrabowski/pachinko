@@ -1,12 +1,13 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: "./",
+  // Use repository subdirectory path for GitHub Pages, relative path for local/Electron
+  base: process.env.GITHUB_PAGES ? "/pachinko-team-6/" : "./",
   build: {
     outDir: "dist",
     assetsDir: "assets",
     minify: "terser",
-    sourcemap: true,
+    sourcemap: false, // Disable sourcemaps for production
   },
   server: {
     port: 3000,
