@@ -282,6 +282,12 @@ export default class GameOverScene extends Phaser.Scene {
     menuButton.on("pointerdown", () => {
       this.cameras.main.fadeOut(500);
       this.time.delayedCall(500, () => {
+        // Reset budget cycle to 1000 Yen when returning to menu
+        const budgetManager = this.registry.get("budgetManager");
+        if (budgetManager) {
+          budgetManager.resetCycle();
+        }
+        
         this.scene.start("MenuScene");
       });
     });
