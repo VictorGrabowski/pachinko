@@ -68,6 +68,9 @@ export const GameEvents = {
 
     // Feature events
     FEATURE_TOGGLED: 'feature:toggled',
+
+    // Theme events
+    PALETTE_CHANGED: 'palette:changed',
 };
 
 export default EventBus;

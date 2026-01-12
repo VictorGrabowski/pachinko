@@ -234,44 +234,8 @@ export default class UIScene extends Phaser.Scene {
    */
   createHardcoreModeIndicators() {
     const centerX = 400;
-    const topY = HARDCORE_LAUNCH.GAUGE_Y_OFFSET;
-
-    // FORCE GAUGE (Jauge de force avec gradient)
-    const gaugeWidth = HARDCORE_LAUNCH.GAUGE_WIDTH;
-    const gaugeHeight = HARDCORE_LAUNCH.GAUGE_HEIGHT;
-
-    // Gauge container
-    this.forceGaugeBackground = this.add.rectangle(
-      centerX, topY,
-      gaugeWidth, gaugeHeight,
-      0x000000, 0.5
-    );
-
-    // Gauge fill (will update dynamically)
-    this.forceGaugeFill = this.add.rectangle(
-      centerX - gaugeWidth / 2, topY,
-      0, gaugeHeight - 4,
-      0x00ff00
-    ).setOrigin(0, 0.5);
-
-    // Gauge border
-    this.forceGaugeBorder = this.add.rectangle(
-      centerX, topY,
-      gaugeWidth, gaugeHeight
-    ).setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.GOLD);
-    this.forceGaugeBorder.setFillStyle();
-
-    // Label
-    this.forceLabelText = this.add.text(centerX, topY - 25, "FORCE", {
-      fontSize: "16px",
-      color: "#FFD700",
-      fontFamily: "serif",
-      fontStyle: "bold",
-    }).setOrigin(0.5);
 
     // ANGLE ARROW (Flèche qui se balance) - positionnée au placeholder
-    const arrowLength = HARDCORE_LAUNCH.ARROW_LENGTH;
-
     // Arrow pivot point (base) - will move with placeholder
     this.angleArrowBase = this.add.circle(centerX, 100, 4, DESIGN_CONSTANTS.COLORS.GOLD);
 
@@ -280,47 +244,16 @@ export default class UIScene extends Phaser.Scene {
     this.angleArrowAngle = 0; // Current angle in degrees
     this.angleArrowX = centerX; // Store position
     this.angleArrowY = 100;
-
-    // SIZE INDICATOR (Texte qui affiche la taille)
-    const sizeY = topY + 120;
-    this.sizeLabelText = this.add.text(centerX, sizeY, "TAILLE", {
-      fontSize: "16px",
-      color: "#FFD700",
-      fontFamily: "serif",
-      fontStyle: "bold",
-    }).setOrigin(0.5);
-
-    this.sizeValueText = this.add.text(centerX, sizeY + 25, "12", {
-      fontSize: "32px",
-      color: "#FFFFFF",
-      fontFamily: "serif",
-      fontStyle: "bold",
-    }).setOrigin(0.5);
+    this.angleArrowForcePercent = 0; // Force percentage for arrow scaling
   }
 
   /**
-   * Update force gauge
+   * Update force indicator (arrow scaling)
    */
   updateForceIndicator(forcePercent) {
-    if (!this.forceGaugeFill) return;
-
-    const gaugeWidth = HARDCORE_LAUNCH.GAUGE_WIDTH;
-    const fillWidth = (gaugeWidth - 4) * (forcePercent / 100);
-    
-    // Update width directly instead of setDisplaySize
-    this.forceGaugeFill.width = fillWidth;
-    this.forceGaugeFill.height = HARDCORE_LAUNCH.GAUGE_HEIGHT - 4;
-
-    // Update color based on force (gradient: green -> yellow -> red)
-    let color;
-    if (forcePercent < 33) {
-      color = 0x00ff00; // Green
-    } else if (forcePercent < 66) {
-      color = 0xffff00; // Yellow
-    } else {
-      color = 0xff0000; // Red
-    }
-    this.forceGaugeFill.setFillStyle(color);
+    // Store force percent and redraw arrow with new scale
+    this.angleArrowForcePercent = forcePercent;
+    this.updateAngleIndicator(this.angleArrowAngle);
   }
 
   /**
@@ -334,7 +267,15 @@ export default class UIScene extends Phaser.Scene {
     // Clear and redraw arrow
     this.angleArrow.clear();
     
-    const arrowLength = HARDCORE_LAUNCH.ARROW_LENGTH;
+    // Calculate arrow dimensions based on force percentage (scales with force)
+    const forceFactor = (this.angleArrowForcePercent || 0) / 100;
+    const arrowLength = HARDCORE_LAUNCH.ARROW_LENGTH_MIN + 
+      (HARDCORE_LAUNCH.ARROW_LENGTH_MAX - HARDCORE_LAUNCH.ARROW_LENGTH_MIN) * forceFactor;
+    const lineWidth = HARDCORE_LAUNCH.ARROW_WIDTH_MIN + 
+      (HARDCORE_LAUNCH.ARROW_WIDTH_MAX - HARDCORE_LAUNCH.ARROW_WIDTH_MIN) * forceFactor;
+    const headSize = HARDCORE_LAUNCH.ARROW_HEAD_MIN + 
+      (HARDCORE_LAUNCH.ARROW_HEAD_MAX - HARDCORE_LAUNCH.ARROW_HEAD_MIN) * forceFactor;
+    
     // Add 90° so that 0° points down, negative to invert left/right
     const angleRad = Phaser.Math.DegToRad(-angleDegrees + 90);
     
@@ -346,17 +287,19 @@ export default class UIScene extends Phaser.Scene {
     const endX = baseX + Math.cos(angleRad) * arrowLength;
     const endY = baseY + Math.sin(angleRad) * arrowLength;
     
-    this.angleArrow.lineStyle(4, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.8);
+    // Opacity also scales slightly with force (0.6 to 1.0)
+    const opacity = 0.6 + 0.4 * forceFactor;
+    
+    this.angleArrow.lineStyle(lineWidth, DESIGN_CONSTANTS.COLORS.PRIMARY, opacity);
     this.angleArrow.beginPath();
     this.angleArrow.moveTo(baseX, baseY);
     this.angleArrow.lineTo(endX, endY);
     this.angleArrow.strokePath();
     
-    // Arrow head (triangle)
-    const headSize = 10;
+    // Arrow head (triangle) - size scales with force
     const perpAngle = angleRad + Math.PI / 2;
     
-    this.angleArrow.fillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.8);
+    this.angleArrow.fillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, opacity);
     this.angleArrow.beginPath();
     this.angleArrow.moveTo(endX, endY);
     this.angleArrow.lineTo(
@@ -377,16 +320,10 @@ export default class UIScene extends Phaser.Scene {
   }
 
   /**
-   * Update size indicator
+   * Update size indicator (placeholder size shows this visually)
    */
   updateSizeIndicator(size) {
-    if (!this.sizeValueText) return;
-    
-    this.sizeValueText.setText(Math.round(size).toString());
-    
-    // Pulse effect to match the oscillation
-    const scale = 0.8 + (size / 30) * 0.4; // Scale between 0.8 and 1.2
-    this.sizeValueText.setScale(scale);
+    // Size is now shown visually via the placeholder, no text needed
   }
 
   /**

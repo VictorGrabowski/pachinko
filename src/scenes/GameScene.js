@@ -47,6 +47,9 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // Configure physics world for better collision detection (prevents tunneling)
+    this.physics.world.OVERLAP_BIAS = 16;
+    
     this.budgetManager = this.registry.get("budgetManager");
     if (!this.budgetManager) {
       this.budgetManager = new BudgetManager({
@@ -217,11 +220,11 @@ export default class GameScene extends Phaser.Scene {
 
         // Configurer le corps de physique circulaire avec offset pour centrer
         // Texture pin est 16x16 avec cercle au centre (8,8)
-        // Rayon 6 = diamètre 12, donc offset = (16-12)/2 = 2
+        // Rayon 8 pour meilleure détection de collision (évite le tunneling)
         // Ajuster le rayon selon la taille si randomSize est activé
         if (pin.body) {
           const radius = useRandomSize ? 6 * size : 6;
-          const offset = useRandomSize ? 2 * size : 2;
+          const offset = useRandomSize ? 0 * size : 0;
           pin.body.setCircle(radius, offset, offset);
         }
 

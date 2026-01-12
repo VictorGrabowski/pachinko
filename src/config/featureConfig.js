@@ -318,9 +318,9 @@ export const FEATURES = [
         key: "maxSize",
         label: "Taille maximum",
         type: "number",
-        default: 20,
+        default: 15,
         min: 12,
-        max: 30,
+        max: 25,
         step: 1
       },
       {

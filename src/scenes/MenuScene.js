@@ -6,6 +6,7 @@ import LanguageManager from "../managers/LanguageManager.js";
 import stateManager from "../managers/StateManager.js";
 import ModalComponent from "../components/ModalComponent.js";
 import UsernameInputOverlay from "../ui/UsernameInputOverlay.js";
+import EventBus, { GameEvents } from "../core/EventBus.js";
 
 /**
  * Menu scene - main game menu
@@ -18,6 +19,12 @@ export default class MenuScene extends Phaser.Scene {
     this.usernameOverlay = null;
     this.languageManager = LanguageManager;
     this.stateManager = stateManager;
+    
+    // Store references to colored UI elements for dynamic theme updates
+    this.menuBackground = null;
+    this.startButton = null;
+    this.settingsButton = null;
+    this.scoreboardButton = null;
   }
 
   create() {
@@ -26,6 +33,12 @@ export default class MenuScene extends Phaser.Scene {
 
     // Initialize FeatureManager
     FeatureManager.init();
+
+    // Ensure saved palette is applied (in case we're coming back from another scene)
+    setActivePalette(getActivePalette());
+
+    // Subscribe to palette changes for instant theme updates
+    EventBus.on(GameEvents.PALETTE_CHANGED, this.onPaletteChanged, this);
 
     // Load saved username from localStorage
     const savedUsername = this.stateManager.getUsername();
@@ -37,7 +50,7 @@ export default class MenuScene extends Phaser.Scene {
     this.modal = new ModalComponent(this);
 
     // Background
-    this.add.rectangle(
+    this.menuBackground = this.add.rectangle(
       centerX,
       centerY,
       800,
@@ -80,10 +93,10 @@ export default class MenuScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     // Start button
-    const startButton = this.add
+    this.startButton = this.add
       .rectangle(centerX, 500, 400, 70, DESIGN_CONSTANTS.COLORS.ACCENT)
       .setInteractive({ useHandCursor: true });
-    startButton.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.GOLD, 0.5);
+    this.startButton.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.GOLD, 0.5);
 
     const startText = this.add
       .text(centerX, 500, this.languageManager.getText('menu.startButton'), {
@@ -95,10 +108,10 @@ export default class MenuScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     // Settings button
-    const settingsButton = this.add
+    this.settingsButton = this.add
       .rectangle(centerX, 590, 400, 60, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.3)
       .setInteractive({ useHandCursor: true });
-    settingsButton.setStrokeStyle(1, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.8);
+    this.settingsButton.setStrokeStyle(1, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.8);
 
     const settingsText = this.add
       .text(centerX, 590, this.languageManager.getText('menu.settings'), {
@@ -109,10 +122,10 @@ export default class MenuScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     // Scoreboard button
-    const scoreboardButton = this.add
+    this.scoreboardButton = this.add
       .rectangle(centerX, 665, 400, 60, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.3)
       .setInteractive({ useHandCursor: true });
-    scoreboardButton.setStrokeStyle(1, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.8);
+    this.scoreboardButton.setStrokeStyle(1, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.8);
 
     const scoreboardText = this.add
       .text(centerX, 665, this.languageManager.getText('menu.scoreboardButton'), {
@@ -123,27 +136,27 @@ export default class MenuScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     // Start button interactions
-    startButton.on("pointerover", () => {
-      startButton.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
+    this.startButton.on("pointerover", () => {
+      this.startButton.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
       this.tweens.add({
-        targets: startButton,
+        targets: this.startButton,
         scaleX: 1.05,
         scaleY: 1.05,
         duration: 150,
       });
     });
 
-    startButton.on("pointerout", () => {
-      startButton.setFillStyle(DESIGN_CONSTANTS.COLORS.ACCENT);
+    this.startButton.on("pointerout", () => {
+      this.startButton.setFillStyle(DESIGN_CONSTANTS.COLORS.ACCENT);
       this.tweens.add({
-        targets: startButton,
+        targets: this.startButton,
         scaleX: 1,
         scaleY: 1,
         duration: 150,
       });
     });
 
-    startButton.on("pointerdown", () => {
+    this.startButton.on("pointerdown", () => {
       this.cameras.main.fadeOut(500);
       this.time.delayedCall(500, () => {
         this.scene.start("BettingScene");
@@ -151,52 +164,52 @@ export default class MenuScene extends Phaser.Scene {
     });
 
     // Settings button interactions
-    settingsButton.on("pointerover", () => {
-      settingsButton.setFillStyle(0x777777);
+    this.settingsButton.on("pointerover", () => {
+      this.settingsButton.setFillStyle(0x777777);
       this.tweens.add({
-        targets: settingsButton,
+        targets: this.settingsButton,
         scaleX: 1.05,
         scaleY: 1.05,
         duration: 150,
       });
     });
 
-    settingsButton.on("pointerout", () => {
-      settingsButton.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.3);
+    this.settingsButton.on("pointerout", () => {
+      this.settingsButton.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.3);
       this.tweens.add({
-        targets: settingsButton,
+        targets: this.settingsButton,
         scaleX: 1,
         scaleY: 1,
         duration: 150,
       });
     });
 
-    settingsButton.on("pointerdown", () => {
+    this.settingsButton.on("pointerdown", () => {
       this.openSettingsOverlay();
     });
 
     // Scoreboard button interactions
-    scoreboardButton.on("pointerover", () => {
-      scoreboardButton.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
+    this.scoreboardButton.on("pointerover", () => {
+      this.scoreboardButton.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
       this.tweens.add({
-        targets: scoreboardButton,
+        targets: this.scoreboardButton,
         scaleX: 1.05,
         scaleY: 1.05,
         duration: 150,
       });
     });
 
-    scoreboardButton.on("pointerout", () => {
-      scoreboardButton.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.3);
+    this.scoreboardButton.on("pointerout", () => {
+      this.scoreboardButton.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.3);
       this.tweens.add({
-        targets: scoreboardButton,
+        targets: this.scoreboardButton,
         scaleX: 1,
         scaleY: 1,
         duration: 150,
       });
     });
 
-    scoreboardButton.on("pointerdown", () => {
+    this.scoreboardButton.on("pointerdown", () => {
       this.cameras.main.fadeOut(500);
       this.time.delayedCall(500, () => {
         this.scene.start("ScoreboardScene");
@@ -848,6 +861,9 @@ export default class MenuScene extends Phaser.Scene {
       return;
     }
 
+    // Restore the confirmed palette (in case user was previewing a different one)
+    setActivePalette(getActivePalette());
+
     // Kill any tweens on the overlay
     this.tweens.killTweensOf(this.settingsOverlay);
 
@@ -938,6 +954,45 @@ export default class MenuScene extends Phaser.Scene {
         toggleBg.fillRoundedRect(toggleBg.toggleX - 22, toggleBg.toggleY - 12, 44, 24, 12);
       });
     }
+  }
+
+  /**
+   * Handle palette change event - refresh all menu colors instantly
+   * @param {Object} data - Event data containing the new palette name
+   */
+  onPaletteChanged(data) {
+    // Refresh main menu background
+    if (this.menuBackground) {
+      this.menuBackground.setFillStyle(DESIGN_CONSTANTS.COLORS.BACKGROUND);
+    }
+
+    // Refresh start button
+    if (this.startButton) {
+      this.startButton.setFillStyle(DESIGN_CONSTANTS.COLORS.ACCENT);
+      this.startButton.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.GOLD, 0.5);
+    }
+
+    // Refresh settings button
+    if (this.settingsButton) {
+      this.settingsButton.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.3);
+      this.settingsButton.setStrokeStyle(1, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.8);
+    }
+
+    // Refresh scoreboard button
+    if (this.scoreboardButton) {
+      this.scoreboardButton.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.3);
+      this.scoreboardButton.setStrokeStyle(1, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.8);
+    }
+
+    // Refresh settings overlay if open
+    this.refreshSettingsOverlayColors();
+  }
+
+  /**
+   * Scene shutdown - cleanup event listeners
+   */
+  shutdown() {
+    EventBus.off(GameEvents.PALETTE_CHANGED, this.onPaletteChanged, this);
   }
 
   /**

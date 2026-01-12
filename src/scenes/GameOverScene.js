@@ -215,6 +215,12 @@ export default class GameOverScene extends Phaser.Scene {
     scoreboardButton.on("pointerdown", () => {
       this.cameras.main.fadeOut(500);
       this.time.delayedCall(500, () => {
+        // Reset budget cycle to 1000 Yen before viewing scoreboard
+        const budgetManager = this.registry.get("budgetManager");
+        if (budgetManager) {
+          budgetManager.resetCycle();
+        }
+        
         this.scene.start("ScoreboardScene");
       });
     });

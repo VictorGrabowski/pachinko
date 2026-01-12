@@ -19,8 +19,8 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     const scale = this.ballRadius / DESIGN_CONSTANTS.BALL_RADIUS;
     this.setScale(scale);
 
-    // Physics properties - use 80% of radius for hitbox to prevent blocking
-    const hitboxRadius = this.ballRadius * 0.8;
+    // Physics properties - use 90% of radius for hitbox (better collision detection)
+    const hitboxRadius = this.ballRadius * 0.9;
     // Center the circular body on the scaled sprite (base sprite is 24x24)
     const spriteHalfSize = 12 * scale;
     const bodyOffset = spriteHalfSize - hitboxRadius;
@@ -28,6 +28,9 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     
     this.setBounce(DESIGN_CONSTANTS.BOUNCE_FACTOR);
     this.setCollideWorldBounds(false);
+    
+    // Limit max velocity to prevent collision tunneling through pins
+    this.body.setMaxVelocity(300, 400);
     this.setTint(DESIGN_CONSTANTS.COLORS.BALL);
 
     // Trail system - get settings from FeatureManager (with fallback defaults)

@@ -14,7 +14,7 @@ export const GAME_CONFIG = {
   physics: {
     default: "arcade",
     arcade: {
-      gravity: { y: 600 },
+      gravity: { y: 800 },
       debug: false,
     },
   },
@@ -248,11 +248,16 @@ export const COLOR_PALETTES = {
   },
 };
 
+// Import EventBus for palette change notifications
+import EventBus, { GameEvents } from '../core/EventBus.js';
+
 // Gestion de la palette active
 export function setActivePalette(paletteName) {
   if (COLOR_PALETTES[paletteName]) {
     Object.assign(DESIGN_CONSTANTS.COLORS, COLOR_PALETTES[paletteName].colors);
     localStorage.setItem('pachinko_active_palette', paletteName);
+    // Emit event to notify all listeners of palette change
+    EventBus.emit(GameEvents.PALETTE_CHANGED, { palette: paletteName });
   }
 }
 
@@ -292,7 +297,7 @@ export const BETTING_CONFIG = {
 // Hardcore Launch Mode Configuration
 export const HARDCORE_LAUNCH = {
   SIZE_MIN: 8,
-  SIZE_MAX: 20,
+  SIZE_MAX: 15,
   SIZE_SPEED: 1500, // ms pour un cycle complet
   ANGLE_MIN: -45, // degrés
   ANGLE_MAX: 45,
@@ -300,7 +305,14 @@ export const HARDCORE_LAUNCH = {
   FORCE_MIN: 50,
   FORCE_MAX: 400,
   FORCE_SPEED: 1800,
-  ARROW_LENGTH: 60, // Longueur de la flèche d'angle
+  // Arrow scaling based on force
+  ARROW_LENGTH_MIN: 35, // Longueur minimale de la flèche (force min)
+  ARROW_LENGTH_MAX: 80, // Longueur maximale de la flèche (force max)
+  ARROW_WIDTH_MIN: 2,   // Épaisseur minimale du trait
+  ARROW_WIDTH_MAX: 6,   // Épaisseur maximale du trait
+  ARROW_HEAD_MIN: 6,    // Taille minimale de la pointe
+  ARROW_HEAD_MAX: 14,   // Taille maximale de la pointe
+  ARROW_LENGTH: 60, // Deprecated - use ARROW_LENGTH_MIN/MAX
   GAUGE_WIDTH: 200,
   GAUGE_HEIGHT: 20,
   GAUGE_Y_OFFSET: 50, // Position Y relative en haut de l'écran
