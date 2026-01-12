@@ -278,11 +278,18 @@ export default class GameScene extends Phaser.Scene {
     const speed =
       FeatureManager.getParameter("creature", "speed") || CREATURE_CONFIG.SPEED;
     const count = FeatureManager.getParameter("creature", "count") || 1;
+    const dashIntensity = FeatureManager.getParameter("creature", "dashIntensity") || 2.0;
+    const creatureSize = FeatureManager.getParameter("creature", "creatureSize") || CREATURE_CONFIG.RADIUS;
 
-    // Create config with updated speed
+    // Creature color palette - vibrant colors for each creature
+    const creatureColors = [0xFFE135, 0x00FFFF, 0xFF00FF, 0x00FF00, 0xFF6B00];
+
+    // Create config with updated parameters
     const config = {
       ...CREATURE_CONFIG,
       SPEED: speed,
+      RADIUS: creatureSize,
+      DASH_INTENSITY: dashIntensity,
     };
 
     // Create multiple creatures if count > 1
@@ -293,7 +300,13 @@ export default class GameScene extends Phaser.Scene {
       const centerY = (CREATURE_CONFIG.MIN_Y + CREATURE_CONFIG.MAX_Y) / 2;
       const offsetX = (i - (count - 1) / 2) * 100; // Spread creatures horizontally
 
-      const creature = new Creature(this, centerX + offsetX, centerY, config);
+      // Assign a unique color to each creature
+      const creatureConfig = {
+        ...config,
+        COLOR: creatureColors[i % creatureColors.length],
+      };
+
+      const creature = new Creature(this, centerX + offsetX, centerY, creatureConfig);
       this.creatures.push(creature);
     }
 
@@ -845,9 +858,11 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
 
-    // Update creature movement
-    if (this.creature) {
-      this.creature.update(time, delta);
+    // Update creature movement for all creatures
+    if (this.creatures && this.creatures.length > 0) {
+      this.creatures.forEach((creature) => {
+        creature.update(time, delta);
+      });
     }
 
     // Update moving pins physics bodies

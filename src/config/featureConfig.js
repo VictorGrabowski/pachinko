@@ -51,6 +51,24 @@ export const FEATURES = [
         min: 1,
         max: 3,
         step: 1
+      },
+      {
+        key: "dashIntensity",
+        label: "Intensité du dash",
+        type: "number",
+        default: 2.0,
+        min: 1.5,
+        max: 3.0,
+        step: 0.1
+      },
+      {
+        key: "creatureSize",
+        label: "Taille",
+        type: "number",
+        default: 18,
+        min: 12,
+        max: 30,
+        step: 2
       }
     ]
   },
