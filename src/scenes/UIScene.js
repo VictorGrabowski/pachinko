@@ -16,6 +16,7 @@ export default class UIScene extends Phaser.Scene {
   init(data) {
     this.gameScene = data.gameScene;
     this.budgetManager = this.registry.get("budgetManager");
+    this.malusMultiplier = this.registry.get("malusMultiplier") || 1.0;
   }
 
   create() {
@@ -35,7 +36,7 @@ export default class UIScene extends Phaser.Scene {
       fontStyle: "bold",
     });
 
-    // Multiplier display
+    // Bet multiplier display
     const currentMultiplier = this.budgetManager ? this.budgetManager.getMultiplier() : 1;
     this.multiplierText = this.add.text(padding, padding + 90, `x${currentMultiplier}`, {
       fontSize: "28px",
@@ -43,6 +44,32 @@ export default class UIScene extends Phaser.Scene {
       fontFamily: "serif",
       fontStyle: "bold",
     });
+
+    // Malus multiplier display (rogue-like bonus)
+    if (this.malusMultiplier > 1) {
+      this.malusMultiplierLabel = this.add.text(padding, padding + 125, this.languageManager.getText('malus.multiplier') + ":", {
+        fontSize: "16px",
+        color: "#F4A460",
+        fontFamily: "serif",
+      });
+
+      this.malusMultiplierText = this.add.text(padding, padding + 145, `x${this.malusMultiplier.toFixed(2)}`, {
+        fontSize: "24px",
+        color: "#00FF00",
+        fontFamily: "serif",
+        fontStyle: "bold",
+      });
+
+      // Add pulsing effect to highlight the bonus
+      this.tweens.add({
+        targets: this.malusMultiplierText,
+        alpha: { from: 1, to: 0.7 },
+        duration: 1000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.inOut'
+      });
+    }
 
     // Lives display
     this.livesLabel = this.add

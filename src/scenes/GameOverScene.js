@@ -221,6 +221,9 @@ export default class GameOverScene extends Phaser.Scene {
           budgetManager.resetCycle();
         }
         
+        // Clear malus config for new cycle
+        this.registry.remove("currentMalusConfig");
+        
         this.scene.start("ScoreboardScene");
       });
     });
@@ -260,6 +263,9 @@ export default class GameOverScene extends Phaser.Scene {
           budgetManager.resetCycle();
         }
         
+        // Clear malus config for new cycle
+        this.registry.remove("currentMalusConfig");
+        
         // Go to BettingScene to place new bet
         this.scene.start("BettingScene");
       });
@@ -293,6 +299,9 @@ export default class GameOverScene extends Phaser.Scene {
         if (budgetManager) {
           budgetManager.resetCycle();
         }
+        
+        // Clear malus config for new cycle
+        this.registry.remove("currentMalusConfig");
         
         this.scene.start("MenuScene");
       });

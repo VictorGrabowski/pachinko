@@ -18,6 +18,9 @@ export default class ScoringSystem {
         this.scene = scene;
         this.buckets = [];
         this.score = 0;
+        
+        // Get malus multiplier from registry (set by BettingScene)
+        this.malusMultiplier = this.scene.registry.get("malusMultiplier") || 1.0;
     }
 
     /**
@@ -80,14 +83,23 @@ export default class ScoringSystem {
     }
 
     /**
-     * Calculate score with combo multiplier
+     * Calculate score with combo multiplier and malus multiplier
      * @param {number} baseValue - Base bucket value
      * @param {number} combo - Current combo count
      * @returns {number} Final calculated score
      */
     calculateScore(baseValue, combo = 0) {
-        const multiplier = 1 + combo * 0.2;
-        return Math.floor(baseValue * multiplier);
+        const comboMultiplier = 1 + combo * 0.2;
+        // Apply both combo multiplier and malus multiplier
+        return Math.floor(baseValue * comboMultiplier * this.malusMultiplier);
+    }
+
+    /**
+     * Get the current malus multiplier
+     * @returns {number}
+     */
+    getMalusMultiplier() {
+        return this.malusMultiplier;
     }
 
     /**

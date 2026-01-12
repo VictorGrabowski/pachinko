@@ -37,6 +37,9 @@ export default class GameScene extends Phaser.Scene {
     // Initialize FeatureManager
     FeatureManager.init();
 
+    // Apply maluses from registry (set by BettingScene)
+    this.applyMalusConfiguration();
+
     // Hardcore launch mode state
     this.hardcoreMode = false;
     this.hardcoreState = {
@@ -44,6 +47,37 @@ export default class GameScene extends Phaser.Scene {
       currentAngle: 0,
       currentForce: 0,
     };
+  }
+
+  /**
+   * Apply malus configuration from registry to FeatureManager
+   * This enables the selected features based on player's malus choices
+   */
+  applyMalusConfiguration() {
+    const activeMaluses = this.registry.get("activeMaluses") || [];
+    
+    // First, disable all malus-related features to start fresh
+    FeatureManager.setEnabled("creature", false);
+    FeatureManager.setEnabled("movingPins", false);
+    FeatureManager.setEnabled("hardcore_launch", false);
+    FeatureManager.setParameter("pins", "randomSize", false);
+    
+    // Apply each selected malus
+    for (const malus of activeMaluses) {
+      if (malus.featureId === "creature") {
+        FeatureManager.setEnabled("creature", true);
+        // Set creature count from malus params
+        if (malus.featureParams && malus.featureParams.count) {
+          FeatureManager.setParameter("creature", "count", malus.featureParams.count);
+        }
+      } else if (malus.featureId === "movingPins") {
+        FeatureManager.setEnabled("movingPins", true);
+      } else if (malus.featureId === "hardcore_launch") {
+        FeatureManager.setEnabled("hardcore_launch", true);
+      } else if (malus.featureId === "pins" && malus.featureParams && malus.featureParams.randomSize) {
+        FeatureManager.setParameter("pins", "randomSize", true);
+      }
+    }
   }
 
   create() {

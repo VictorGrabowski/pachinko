@@ -139,4 +139,25 @@ export default class BudgetManager {
     this.currentBet = 0;
     this.currentMultiplier = 1;
   }
+
+  /**
+   * Deduct a specific amount from balance (for malus reroll cost)
+   * @param {number} amount - Amount to deduct
+   * @returns {Object} Result with success status and remaining balance
+   */
+  deductAmount(amount) {
+    if (amount > this.balance) {
+      return { 
+        success: false, 
+        errorKey: "malus.insufficientReroll"
+      };
+    }
+
+    this.balance -= amount;
+    return {
+      success: true,
+      deducted: amount,
+      remainingBalance: this.balance
+    };
+  }
 }

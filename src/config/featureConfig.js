@@ -381,3 +381,135 @@ export function getFeaturesByCategory() {
   });
   return grouped;
 }
+
+/**
+ * MALUS POOL - Rogue-like difficulty modifiers
+ * Each malus increases the score multiplier as reward for higher difficulty
+ * 
+ * Formula: baseMultiplier = 1 + sum(bonusPercent/100)
+ * If hardcore is active: finalMultiplier = baseMultiplier * 2
+ * 
+ * Example: 2 creatures (+66%) + moving pins (+50%) + hardcore (x2) = (1 + 0.66 + 0.50) * 2 = 4.32x
+ */
+export const MALUS_POOL = [
+  {
+    id: "creature_1",
+    nameKey: "malus.creature1",
+    descriptionKey: "malus.creature1Desc",
+    icon: "👹",
+    bonusPercent: 33,
+    featureId: "creature",
+    featureParams: { count: 1 },
+    isHardcore: false
+  },
+  {
+    id: "creature_2",
+    nameKey: "malus.creature2",
+    descriptionKey: "malus.creature2Desc",
+    icon: "👹👹",
+    bonusPercent: 66,
+    featureId: "creature",
+    featureParams: { count: 2 },
+    isHardcore: false
+  },
+  {
+    id: "creature_3",
+    nameKey: "malus.creature3",
+    descriptionKey: "malus.creature3Desc",
+    icon: "👹👹👹",
+    bonusPercent: 99,
+    featureId: "creature",
+    featureParams: { count: 3 },
+    isHardcore: false
+  },
+  {
+    id: "moving_pins",
+    nameKey: "malus.movingPins",
+    descriptionKey: "malus.movingPinsDesc",
+    icon: "↔️",
+    bonusPercent: 50,
+    featureId: "movingPins",
+    featureParams: {},
+    isHardcore: false
+  },
+  {
+    id: "random_pin_size",
+    nameKey: "malus.randomPinSize",
+    descriptionKey: "malus.randomPinSizeDesc",
+    icon: "🎲",
+    bonusPercent: 25,
+    featureId: "pins",
+    featureParams: { randomSize: true },
+    isHardcore: false
+  },
+  {
+    id: "hardcore_mode",
+    nameKey: "malus.hardcoreMode",
+    descriptionKey: "malus.hardcoreModeDesc",
+    icon: "💀",
+    bonusPercent: 0, // Hardcore doubles the TOTAL, not additive
+    featureId: "hardcore_launch",
+    featureParams: {},
+    isHardcore: true // Special flag: doubles total multiplier
+  }
+];
+
+/**
+ * Generate a random malus configuration
+ * @param {number} minMaluses - Minimum number of maluses (default 2)
+ * @param {number} maxMaluses - Maximum number of maluses (default 4)
+ * @returns {Object} Configuration with selectedMaluses array and computed multiplier
+ */
+export function generateRandomMalusConfig(minMaluses = 2, maxMaluses = 4) {
+  // Shuffle the malus pool
+  const shuffled = [...MALUS_POOL].sort(() => Math.random() - 0.5);
+  
+  // Pick random count between min and max
+  const count = Math.floor(Math.random() * (maxMaluses - minMaluses + 1)) + minMaluses;
+  
+  // Select maluses, avoiding duplicates for creature variants
+  const selected = [];
+  let hasCreature = false;
+  
+  for (const malus of shuffled) {
+    if (selected.length >= count) break;
+    
+    // Only allow one creature variant
+    if (malus.featureId === "creature") {
+      if (hasCreature) continue;
+      hasCreature = true;
+    }
+    
+    selected.push(malus);
+  }
+  
+  // Calculate multiplier
+  const multiplier = calculateMalusMultiplier(selected);
+  
+  return {
+    selectedMaluses: selected,
+    multiplier
+  };
+}
+
+/**
+ * Calculate the score multiplier from selected maluses
+ * Formula: (1 + sum(bonusPercent/100)) * (2 if hardcore else 1)
+ * @param {Array} maluses - Array of selected malus objects
+ * @returns {number} Final multiplier (e.g., 2.32)
+ */
+export function calculateMalusMultiplier(maluses) {
+  let bonusSum = 0;
+  let hasHardcore = false;
+  
+  for (const malus of maluses) {
+    if (malus.isHardcore) {
+      hasHardcore = true;
+    } else {
+      bonusSum += malus.bonusPercent;
+    }
+  }
+  
+  const baseMultiplier = 1 + (bonusSum / 100);
+  return hasHardcore ? baseMultiplier * 2 : baseMultiplier;
+}

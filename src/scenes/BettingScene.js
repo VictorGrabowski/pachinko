@@ -6,6 +6,9 @@ import stateManager from "../managers/StateManager.js";
 import {
   DESIGN_CONSTANTS,
 } from "../config/gameConfig.js";
+import {
+  generateRandomMalusConfig,
+} from "../config/featureConfig.js";
 
 export default class BettingScene extends Phaser.Scene {
   constructor() {
@@ -13,7 +16,8 @@ export default class BettingScene extends Phaser.Scene {
     this.statusText = null;
     this.usernameOverlay = null;
     this.languageManager = LanguageManager;
-    this.selectedBet = 100; // Mise par défaut
+    this.selectedBet = 100; // Default bet
+    this.currentMalusConfig = null; // Current random malus configuration
   }
 
   create() {
@@ -54,10 +58,10 @@ export default class BettingScene extends Phaser.Scene {
 
     this.createSakuraEffect();
 
-    // Title
+    // Title - now refers to malus configuration
     this.add
-      .text(centerX, 150, this.languageManager.getText("betting.title"), {
-        fontSize: "48px",
+      .text(centerX, 80, this.languageManager.getText("malus.title"), {
+        fontSize: "42px",
         color: "#FFD700",
         fontFamily: "serif",
         fontStyle: "bold",
@@ -67,8 +71,8 @@ export default class BettingScene extends Phaser.Scene {
     // Username display
     const username = this.registry.get("currentUsername") || this.languageManager.getText("betting.player");
     this.usernameText = this.add
-      .text(centerX, 220, `${this.languageManager.getText("betting.player")} : ${username}`, {
-        fontSize: "22px",
+      .text(centerX, 130, `${this.languageManager.getText("betting.player")} : ${username}`, {
+        fontSize: "20px",
         color: "#F4A460",
         fontFamily: "serif",
       })
@@ -76,35 +80,56 @@ export default class BettingScene extends Phaser.Scene {
 
     // Balance display
     this.balanceText = this.add
-      .text(centerX, 260, "", {
-        fontSize: "28px",
+      .text(centerX, 165, "", {
+        fontSize: "26px",
         color: "#FFD700",
         fontFamily: "serif",
         fontStyle: "bold",
       })
       .setOrigin(0.5);
 
-    this.balanceMaxText = this.add
-      .text(centerX, 300, "", {
-        fontSize: "18px",
+    this.updateBalanceDisplay();
+
+    // Check for existing malus config (prevents exploit via menu return)
+    const existingMalusConfig = this.registry.get("currentMalusConfig");
+    if (existingMalusConfig) {
+      // Restore previous config - player cannot get free reroll by returning to menu
+      this.currentMalusConfig = existingMalusConfig;
+    } else {
+      // Generate initial random malus configuration
+      this.currentMalusConfig = generateRandomMalusConfig(2, 4);
+      // Store in registry to persist across scene transitions
+      this.registry.set("currentMalusConfig", this.currentMalusConfig);
+    }
+
+    // Create malus display panel
+    this.createMalusPanel(centerX, 340);
+
+    // Create reroll button
+    this.createRerollButton(centerX, 520);
+
+    // Betting section title
+    this.add
+      .text(centerX, 600, this.languageManager.getText("betting.title"), {
+        fontSize: "28px",
         color: "#F4A460",
         fontFamily: "serif",
+        fontStyle: "bold",
       })
       .setOrigin(0.5);
 
-    this.updateBalanceDisplay();
-
     // Betting options
-    this.createBettingOptions(centerX, centerY);
+    this.createBettingOptions(centerX, 680);
 
-    // Start button
+    // Start button (Accept & Bet)
     const startButton = this.add
-      .rectangle(centerX, 780, 300, 60, DESIGN_CONSTANTS.COLORS.ACCENT)
+      .rectangle(centerX, 800, 320, 60, DESIGN_CONSTANTS.COLORS.ACCENT)
       .setInteractive({ useHandCursor: true });
+    startButton.setStrokeStyle(3, DESIGN_CONSTANTS.COLORS.GOLD);
 
     this.startButtonText = this.add
-      .text(centerX, 780, this.languageManager.getText("betting.startGame"), {
-        fontSize: "28px",
+      .text(centerX, 800, this.languageManager.getText("malus.accept"), {
+        fontSize: "26px",
         color: "#FFFFFF",
         fontFamily: "serif",
         fontStyle: "bold",
@@ -113,6 +138,7 @@ export default class BettingScene extends Phaser.Scene {
 
     startButton.on("pointerover", () => {
       startButton.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
+      this.startButtonText.setColor("#000000");
       this.tweens.add({
         targets: [startButton, this.startButtonText],
         scaleX: 1.05,
@@ -123,6 +149,7 @@ export default class BettingScene extends Phaser.Scene {
 
     startButton.on("pointerout", () => {
       startButton.setFillStyle(DESIGN_CONSTANTS.COLORS.ACCENT);
+      this.startButtonText.setColor("#FFFFFF");
       this.tweens.add({
         targets: [startButton, this.startButtonText],
         scaleX: 1,
@@ -132,28 +159,17 @@ export default class BettingScene extends Phaser.Scene {
     });
 
     startButton.on("pointerdown", () => {
-      const betResult = this.budgetManager.placeBet(this.selectedBet);
-
-      if (!betResult.success) {
-        const errorMessage = this.languageManager.getText(betResult.errorKey);
-        this.showStatus(errorMessage, "#FF6B35");
-        return;
-      }
-
-      this.cameras.main.fadeOut(400);
-      this.time.delayedCall(400, () => {
-        this.scene.start("GameScene");
-      });
+      this.startGameWithMalus();
     });
 
     // Change username button
     const changeUsernameBtn = this.add
-      .rectangle(centerX, 860, 250, 50, DESIGN_CONSTANTS.COLORS.PRIMARY)
+      .rectangle(centerX, 880, 250, 45, DESIGN_CONSTANTS.COLORS.PRIMARY)
       .setInteractive({ useHandCursor: true });
 
     this.add
-      .text(centerX, 860, this.languageManager.getText("betting.changeUsername"), {
-        fontSize: "20px",
+      .text(centerX, 880, this.languageManager.getText("betting.changeUsername"), {
+        fontSize: "18px",
         color: "#FFFFFF",
         fontFamily: "serif",
       })
@@ -194,7 +210,263 @@ export default class BettingScene extends Phaser.Scene {
     });
   }
 
-  createBettingOptions(centerX, centerY) {
+  /**
+   * Create the malus configuration panel
+   */
+  createMalusPanel(centerX, centerY) {
+    // Panel background
+    this.malusPanel = this.add.rectangle(centerX, centerY, 700, 260, 0x1a1a2e, 0.9);
+    this.malusPanel.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.ACCENT);
+
+    // Malus container for easy refresh
+    this.malusContainer = this.add.container(0, 0);
+
+    this.updateMalusDisplay(centerX, centerY);
+  }
+
+  /**
+   * Update the malus display with current configuration
+   */
+  updateMalusDisplay(centerX, centerY) {
+    // Clear previous malus display
+    this.malusContainer.removeAll(true);
+
+    const maluses = this.currentMalusConfig.selectedMaluses;
+    const multiplier = this.currentMalusConfig.multiplier;
+
+    // Multiplier display at top of panel
+    const multiplierLabel = this.add.text(
+      centerX, centerY - 100,
+      `${this.languageManager.getText("malus.multiplier")}:`,
+      {
+        fontSize: "20px",
+        color: "#F4A460",
+        fontFamily: "serif",
+      }
+    ).setOrigin(0.5);
+    this.malusContainer.add(multiplierLabel);
+
+    const multiplierText = this.add.text(
+      centerX, centerY - 70,
+      `x${multiplier.toFixed(2)}`,
+      {
+        fontSize: "42px",
+        color: "#FFD700",
+        fontFamily: "serif",
+        fontStyle: "bold",
+      }
+    ).setOrigin(0.5);
+    this.malusContainer.add(multiplierText);
+
+    // Display each malus as a card
+    const cardWidth = 150;
+    const cardHeight = 100;
+    const cardSpacing = 15;
+    const totalWidth = maluses.length * cardWidth + (maluses.length - 1) * cardSpacing;
+    const startX = centerX - totalWidth / 2 + cardWidth / 2;
+    const cardsY = centerY + 30;
+
+    maluses.forEach((malus, index) => {
+      const cardX = startX + index * (cardWidth + cardSpacing);
+
+      // Card background
+      const cardBg = this.add.rectangle(
+        cardX, cardsY,
+        cardWidth, cardHeight,
+        DESIGN_CONSTANTS.COLORS.PRIMARY, 0.6
+      );
+      cardBg.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.GOLD);
+      this.malusContainer.add(cardBg);
+
+      // Icon
+      const icon = this.add.text(cardX, cardsY - 25, malus.icon, {
+        fontSize: "28px",
+      }).setOrigin(0.5);
+      this.malusContainer.add(icon);
+
+      // Name
+      const name = this.add.text(
+        cardX, cardsY + 10,
+        this.languageManager.getText(malus.nameKey),
+        {
+          fontSize: "14px",
+          color: "#FFFFFF",
+          fontFamily: "serif",
+          fontStyle: "bold",
+          align: "center",
+          wordWrap: { width: cardWidth - 10 }
+        }
+      ).setOrigin(0.5);
+      this.malusContainer.add(name);
+
+      // Bonus percentage (if not hardcore)
+      const bonusText = malus.isHardcore 
+        ? "x2 TOTAL" 
+        : `+${malus.bonusPercent}%`;
+      const bonus = this.add.text(
+        cardX, cardsY + 35,
+        bonusText,
+        {
+          fontSize: "16px",
+          color: malus.isHardcore ? "#FF6B35" : "#FFD700",
+          fontFamily: "serif",
+          fontStyle: "bold",
+        }
+      ).setOrigin(0.5);
+      this.malusContainer.add(bonus);
+    });
+
+    // If no maluses (edge case)
+    if (maluses.length === 0) {
+      const noMalusText = this.add.text(
+        centerX, cardsY,
+        this.languageManager.getText("malus.noMalus"),
+        {
+          fontSize: "24px",
+          color: "#888888",
+          fontFamily: "serif",
+        }
+      ).setOrigin(0.5);
+      this.malusContainer.add(noMalusText);
+    }
+  }
+
+  /**
+   * Create the reroll button with cost display
+   */
+  createRerollButton(centerX, y) {
+    const rerollCost = Math.floor(this.budgetManager.getBalance() * 0.2);
+
+    // Reroll button background
+    this.rerollButton = this.add.rectangle(
+      centerX, y,
+      280, 50,
+      DESIGN_CONSTANTS.COLORS.PRIMARY
+    );
+    this.rerollButton.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.ACCENT);
+    this.rerollButton.setInteractive({ useHandCursor: true });
+
+    // Reroll text with cost
+    this.rerollButtonText = this.add.text(
+      centerX, y,
+      `🎲 ${this.languageManager.getText("malus.reroll")} (${rerollCost} ¥)`,
+      {
+        fontSize: "20px",
+        color: "#FFFFFF",
+        fontFamily: "serif",
+        fontStyle: "bold",
+      }
+    ).setOrigin(0.5);
+
+    // Cost subtitle
+    this.rerollCostText = this.add.text(
+      centerX, y + 35,
+      this.languageManager.getText("malus.rerollCost"),
+      {
+        fontSize: "14px",
+        color: "#888888",
+        fontFamily: "serif",
+      }
+    ).setOrigin(0.5);
+
+    this.rerollButton.on("pointerover", () => {
+      this.rerollButton.setFillStyle(DESIGN_CONSTANTS.COLORS.ACCENT);
+      this.tweens.add({
+        targets: [this.rerollButton, this.rerollButtonText],
+        scaleX: 1.05,
+        scaleY: 1.05,
+        duration: 150,
+      });
+    });
+
+    this.rerollButton.on("pointerout", () => {
+      this.rerollButton.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY);
+      this.tweens.add({
+        targets: [this.rerollButton, this.rerollButtonText],
+        scaleX: 1,
+        scaleY: 1,
+        duration: 150,
+      });
+    });
+
+    this.rerollButton.on("pointerdown", () => {
+      this.rerollMalusConfig();
+    });
+  }
+
+  /**
+   * Reroll the malus configuration (costs 20% of balance)
+   */
+  rerollMalusConfig() {
+    const cost = Math.floor(this.budgetManager.getBalance() * 0.2);
+    const result = this.budgetManager.deductAmount(cost);
+
+    if (!result.success) {
+      const errorMessage = this.languageManager.getText(result.errorKey);
+      this.showStatus(errorMessage, "#FF6B35");
+      return;
+    }
+
+    // Update balance display
+    this.updateBalanceDisplay();
+
+    // Generate new random configuration
+    this.currentMalusConfig = generateRandomMalusConfig(2, 4);
+    // Update registry with new config
+    this.registry.set("currentMalusConfig", this.currentMalusConfig);
+
+    // Update malus display with animation
+    this.tweens.add({
+      targets: this.malusContainer,
+      alpha: 0,
+      duration: 150,
+      onComplete: () => {
+        this.updateMalusDisplay(400, 340);
+        this.tweens.add({
+          targets: this.malusContainer,
+          alpha: 1,
+          duration: 200,
+        });
+      }
+    });
+
+    // Update reroll button cost
+    const newCost = Math.floor(this.budgetManager.getBalance() * 0.2);
+    this.rerollButtonText.setText(
+      `🎲 ${this.languageManager.getText("malus.reroll")} (${newCost} ¥)`
+    );
+
+    // Show reroll feedback
+    this.showStatus(`-${cost} ¥ 🎲`, "#FF6B35");
+  }
+
+  /**
+   * Start the game with selected malus and bet
+   */
+  startGameWithMalus() {
+    const betResult = this.budgetManager.placeBet(this.selectedBet);
+
+    if (!betResult.success) {
+      const errorMessage = this.languageManager.getText(betResult.errorKey);
+      this.showStatus(errorMessage, "#FF6B35");
+      return;
+    }
+
+    // Store malus configuration in registry for GameScene
+    this.registry.set("activeMaluses", this.currentMalusConfig.selectedMaluses);
+    this.registry.set("malusMultiplier", this.currentMalusConfig.multiplier);
+    
+    // Clear the temporary malus config (player committed to this config)
+    this.registry.remove("currentMalusConfig");
+
+    // Transition to game
+    this.cameras.main.fadeOut(400);
+    this.time.delayedCall(400, () => {
+      this.scene.start("GameScene");
+    });
+  }
+
+  createBettingOptions(centerX, y) {
     const betOptions = [
       { amount: 100, multiplier: "x1" },
       { amount: 200, multiplier: "x2" },
@@ -202,12 +474,11 @@ export default class BettingScene extends Phaser.Scene {
       { amount: 2000, multiplier: "x20" }
     ];
 
-    const buttonWidth = 160;
-    const buttonHeight = 100;
-    const spacing = 20;
+    const buttonWidth = 140;
+    const buttonHeight = 70;
+    const spacing = 15;
     const totalWidth = (buttonWidth * 4) + (spacing * 3);
     const startX = centerX - totalWidth / 2;
-    const y = 480;
 
     this.betButtons = [];
 
@@ -220,18 +491,18 @@ export default class BettingScene extends Phaser.Scene {
         buttonWidth, buttonHeight,
         isSelected ? DESIGN_CONSTANTS.COLORS.GOLD : DESIGN_CONSTANTS.COLORS.PRIMARY
       );
-      button.setStrokeStyle(3, DESIGN_CONSTANTS.COLORS.GOLD);
+      button.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.GOLD);
       button.setInteractive({ useHandCursor: true });
 
-      const amountText = this.add.text(x, y - 15, `${option.amount} ¥`, {
-        fontSize: "28px",
+      const amountText = this.add.text(x, y - 10, `${option.amount} ¥`, {
+        fontSize: "22px",
         color: isSelected ? "#000000" : "#FFFFFF",
         fontFamily: "serif",
         fontStyle: "bold",
       }).setOrigin(0.5);
 
-      const multiplierText = this.add.text(x, y + 20, option.multiplier, {
-        fontSize: "24px",
+      const multiplierText = this.add.text(x, y + 18, option.multiplier, {
+        fontSize: "18px",
         color: isSelected ? "#000000" : "#FFD700",
         fontFamily: "serif",
       }).setOrigin(0.5);
@@ -269,9 +540,7 @@ export default class BettingScene extends Phaser.Scene {
 
   updateBalanceDisplay() {
     const balance = this.budgetManager.getBalance();
-    const balanceMax = this.budgetManager.getBalanceMax();
     this.balanceText.setText(`Balance: ${balance} ¥`);
-    this.balanceMaxText.setText(`Record: ${balanceMax} ¥`);
   }
 
   showStatus(message, color = "#FFD700") {
@@ -280,8 +549,8 @@ export default class BettingScene extends Phaser.Scene {
     }
 
     this.statusText = this.add
-      .text(400, 720, message, {
-        fontSize: "20px",
+      .text(400, 560, message, {
+        fontSize: "18px",
         color,
         fontFamily: "serif",
       })
