@@ -9,6 +9,8 @@ Japanese-inspired Pachinko game built with **Phaser 3** + **Vite**. Written in *
 ### Scene Flow
 ```
 BootScene → PreloadScene → MenuScene → BettingScene → GameScene + UIScene (parallel) → GameOverScene
+                                                                                              ↓
+                                                                                      ScoreboardScene
 ```
 
 - **GameScene**: Core gameplay, physics, entities. Runs in parallel with UIScene.
@@ -21,7 +23,7 @@ Entities extend Phaser sprites with self-contained behavior:
 
 - **Ball** (`entities/Ball.js`): Extends `Phaser.Physics.Arcade.Sprite`. Tracks `pinHitCount` for combos, has particle trail and glow circle. Call `ball.hitPin()` on collision.
 - **Pin** (`entities/Pin.js`): Static physics body with collision feedback (kintsugi effect for multiple hits).
-- **Creature** (`entities/Creature.js`): Wandering yokai obstacle with sine-wave movement.
+- **Creature** (`entities/Creature.js`): Pac-Man style yokai with pixel art, mouth animation, and dash ability. Wanders the board as an obstacle.
 
 ## Feature Configuration System
 
@@ -57,7 +59,8 @@ if (FeatureManager.isEnabled("my_feature")) {
 - **FeatureManager**: Centralized feature toggles. Always initialize: `FeatureManager.init()`.
 - **BudgetManager**: Manages yen/credit economy. Stored in `this.registry.get("budgetManager")`.
 - **StateManager**: localStorage persistence for settings.
-- **AudioSystem**: Handles all audio with Ma (間) - enforces minimum 150ms between sounds to prevent overlap.
+- **LanguageManager**: Multi-language i18n system (FR/EN). Use `LanguageManager.getText('key')` and `LanguageManager.setLanguage('en')`.
+- **AudioSystem**: Handles all audio with Ma (間) - configurable minimum interval between sounds to prevent overlap.
 
 ## Japanese Aesthetic Implementation
 
@@ -79,8 +82,10 @@ this.audioSystem.play("sound"); // Automatically respects Ma interval
 
 ### Color Palettes
 
-Game supports 5 palettes stored in `gameConfig.js`. Access via `DESIGN_CONSTANTS.COLORS`:
-- `PRIMARY`, `ACCENT`, `GOLD`, `BACKGROUND`, `SAKURA`, `BALL`
+Game supports 5 palettes (classic, ocean, forest, sunset, midnight) stored in `gameConfig.js`. Access via:
+- `DESIGN_CONSTANTS.COLORS`: Current palette with `PRIMARY`, `ACCENT`, `GOLD`, `BACKGROUND`, `SAKURA`, `BALL`
+- `PALETTES`: Object containing all 5 palette definitions
+- `setCurrentPalette(name)` / `getCurrentPalette()`: Switch palettes dynamically
 - Use these constants, never hardcode colors.
 
 ## Development Commands
@@ -93,11 +98,12 @@ npm run preview  # Preview production build
 
 ## Code Conventions
 
-1. **File Organization**: Group by feature domain (`entities/`, `managers/`, `scenes/`), not by type.
+1. **File Organization**: Group by feature domain (`entities/`, `managers/`, `scenes/`, `ui/`, `components/`), not by type.
 2. **Import Paths**: Always use `.js` extension in imports: `import Ball from './entities/Ball.js'`
 3. **Scene Communication**: Use `this.scene.get('OtherScene')` or `this.registry` for cross-scene data.
 4. **Physics Groups**: Create collision groups in `create()`, handle in `update()` loop.
-5. **French UI**: All user-facing text in French via `TRANSLATIONS` object in `gameConfig.js`.
+5. **Multi-language UI**: All user-facing text via `LanguageManager.getText('key')`. Supports FR/EN.
+6. **UI Components**: Reusable panels in `src/ui/` extend `Phaser.GameObjects.Container`. HTML overlays in `src/components/`.
 
 ## Common Patterns
 
@@ -124,6 +130,8 @@ Always follow this.add.particles with tint array using DESIGN_CONSTANTS.COLORS f
 
 - [src/config/featureConfig.js](src/config/featureConfig.js) - Feature definitions
 - [src/config/gameConfig.js](src/config/gameConfig.js) - All constants, palettes, translations
+- [src/managers/LanguageManager.js](src/managers/LanguageManager.js) - Multi-language i18n system
+- [src/ui/BettingPanel.js](src/ui/BettingPanel.js) - Reusable Phaser Container component example
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - Detailed architecture documentation
 - [docs/DESIGN_PHILOSOPHY.md](docs/DESIGN_PHILOSOPHY.md) - Japanese aesthetic concepts with code examples
 - [docs/FEATURE_CONFIGURATION.md](docs/FEATURE_CONFIGURATION.md) - Complete feature system guide
