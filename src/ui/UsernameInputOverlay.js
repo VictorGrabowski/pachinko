@@ -53,7 +53,14 @@ export default class UsernameInputOverlay {
    * Create the HTML overlay elements
    */
   createOverlay() {
-    // Create container
+    // Get colors from DESIGN_CONSTANTS (convert hex to CSS)
+    const goldColor = '#FFD700';
+    const primaryColor = '#F4A460';
+    const accentColor = '#FF6B35';
+    const bgColor = '#2E3A59';
+    const sakuraColor = '#FFB7C5';
+    
+    // Create container with fade-in animation
     this.container = document.createElement('div');
     this.container.id = 'username-overlay';
     this.container.style.cssText = `
@@ -68,71 +75,107 @@ export default class UsernameInputOverlay {
       align-items: center;
       z-index: 1000;
       font-family: serif;
+      animation: fadeIn 0.3s ease-out;
     `;
 
-    // Create modal panel
+    // Create modal panel with Japanese-inspired design
     const modal = document.createElement('div');
     modal.style.cssText = `
-      background: linear-gradient(135deg, rgba(46, 58, 89, 0.95), rgba(26, 26, 46, 0.98));
-      border: 3px solid #FFD700;
-      border-radius: 12px;
-      padding: 40px;
-      max-width: 400px;
+      background: linear-gradient(180deg, rgba(46, 58, 89, 0.98), rgba(26, 26, 46, 0.99));
+      border: 3px solid ${goldColor};
+      border-radius: 16px;
+      padding: 45px 40px;
+      max-width: 420px;
       width: 90%;
-      box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+      box-shadow: 0 0 40px rgba(255, 215, 0, 0.25), inset 0 0 60px rgba(0, 0, 0, 0.3);
       text-align: center;
+      position: relative;
+      animation: slideUp 0.4s ease-out;
+    `;
+
+    // Japanese decorative element (top)
+    const decorTop = document.createElement('div');
+    decorTop.innerHTML = '✿ ─── ✿';
+    decorTop.style.cssText = `
+      color: ${sakuraColor};
+      font-size: 18px;
+      letter-spacing: 8px;
+      margin-bottom: 15px;
+      opacity: 0.7;
+    `;
+
+    // Title with Japanese characters
+    const titleJp = document.createElement('div');
+    titleJp.textContent = 'ようこそ';
+    titleJp.style.cssText = `
+      color: ${primaryColor};
+      font-size: 16px;
+      margin-bottom: 5px;
+      letter-spacing: 4px;
+      opacity: 0.8;
     `;
 
     // Title
     const title = document.createElement('h2');
     title.textContent = this.languageManager.getText('username.title');
     title.style.cssText = `
-      color: #FFD700;
-      font-size: 32px;
-      margin: 0 0 10px 0;
+      color: ${goldColor};
+      font-size: 36px;
+      margin: 0 0 8px 0;
       font-weight: bold;
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      letter-spacing: 3px;
+    `;
+
+    // Decorative line under title
+    const titleLine = document.createElement('div');
+    titleLine.style.cssText = `
+      width: 80px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, ${goldColor}, transparent);
+      margin: 0 auto 20px auto;
     `;
 
     // Prompt text
     const prompt = document.createElement('p');
     prompt.textContent = this.languageManager.getText('username.prompt');
     prompt.style.cssText = `
-      color: #F4A460;
+      color: ${primaryColor};
       font-size: 18px;
-      margin: 0 0 30px 0;
+      margin: 0 0 25px 0;
     `;
 
-    // Input field
+    // Input field with enhanced styling
     this.inputElement = document.createElement('input');
     this.inputElement.type = 'text';
     this.inputElement.placeholder = this.languageManager.getText('username.placeholder');
     this.inputElement.maxLength = 12;
     this.inputElement.style.cssText = `
       width: 100%;
-      padding: 12px;
-      font-size: 18px;
-      border: 2px solid #F4A460;
-      border-radius: 6px;
-      background: rgba(255, 255, 255, 0.1);
-      color: #FFD700;
+      padding: 14px 16px;
+      font-size: 20px;
+      border: 2px solid ${primaryColor};
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      color: ${goldColor};
       font-family: serif;
       text-align: center;
       outline: none;
-      transition: all 0.3s;
+      transition: all 0.3s ease;
       box-sizing: border-box;
+      letter-spacing: 1px;
     `;
 
     // Input focus effects
     this.inputElement.addEventListener('focus', () => {
-      this.inputElement.style.borderColor = '#FFD700';
-      this.inputElement.style.background = 'rgba(255, 255, 255, 0.15)';
-      this.inputElement.style.boxShadow = '0 0 10px rgba(255, 215, 0, 0.5)';
+      this.inputElement.style.borderColor = goldColor;
+      this.inputElement.style.background = 'rgba(255, 255, 255, 0.12)';
+      this.inputElement.style.boxShadow = `0 0 15px rgba(255, 215, 0, 0.4)`;
     });
 
     this.inputElement.addEventListener('blur', () => {
-      this.inputElement.style.borderColor = '#F4A460';
-      this.inputElement.style.background = 'rgba(255, 255, 255, 0.1)';
+      this.inputElement.style.borderColor = primaryColor;
+      this.inputElement.style.background = 'rgba(255, 255, 255, 0.08)';
       this.inputElement.style.boxShadow = 'none';
     });
 
@@ -140,9 +183,9 @@ export default class UsernameInputOverlay {
     const validation = document.createElement('p');
     validation.textContent = this.languageManager.getText('username.validation');
     validation.style.cssText = `
-      color: #F4A460;
-      font-size: 12px;
-      margin: 8px 0 20px 0;
+      color: ${sakuraColor};
+      font-size: 13px;
+      margin: 10px 0 25px 0;
       opacity: 0.7;
     `;
 
@@ -150,39 +193,40 @@ export default class UsernameInputOverlay {
     const errorMsg = document.createElement('p');
     errorMsg.id = 'username-error';
     errorMsg.style.cssText = `
-      color: #FF6B35;
+      color: ${accentColor};
       font-size: 14px;
-      margin: 10px 0 0 0;
+      margin: 12px 0 0 0;
       min-height: 20px;
       font-weight: bold;
     `;
 
-    // Submit button
+    // Submit button with enhanced Japanese styling
     const submitBtn = document.createElement('button');
     submitBtn.textContent = this.languageManager.getText('username.submit');
     submitBtn.style.cssText = `
-      background: linear-gradient(135deg, #FFD700, #F4A460);
+      background: linear-gradient(135deg, ${goldColor}, ${primaryColor});
       border: none;
-      border-radius: 8px;
-      padding: 14px 32px;
+      border-radius: 10px;
+      padding: 16px 40px;
       font-size: 18px;
       font-weight: bold;
-      color: #2E3A59;
+      color: ${bgColor};
       cursor: pointer;
       font-family: serif;
-      transition: all 0.3s;
-      margin-top: 10px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      transition: all 0.3s ease;
+      margin-top: 5px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      letter-spacing: 1px;
     `;
 
     submitBtn.addEventListener('mouseenter', () => {
-      submitBtn.style.transform = 'scale(1.05)';
-      submitBtn.style.boxShadow = '0 6px 12px rgba(255, 215, 0, 0.5)';
+      submitBtn.style.transform = 'scale(1.05) translateY(-2px)';
+      submitBtn.style.boxShadow = `0 8px 20px rgba(255, 215, 0, 0.4)`;
     });
 
     submitBtn.addEventListener('mouseleave', () => {
-      submitBtn.style.transform = 'scale(1)';
-      submitBtn.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+      submitBtn.style.transform = 'scale(1) translateY(0)';
+      submitBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
     });
 
     // Submit handler
@@ -197,7 +241,7 @@ export default class UsernameInputOverlay {
         }
       } else {
         errorMsg.textContent = this.languageManager.getText('username.error');
-        this.inputElement.style.borderColor = '#FF6B35';
+        this.inputElement.style.borderColor = accentColor;
         
         // Shake animation
         this.inputElement.style.animation = 'shake 0.4s';
@@ -216,26 +260,63 @@ export default class UsernameInputOverlay {
       }
     });
 
+    // Japanese decorative element (bottom)
+    const decorBottom = document.createElement('div');
+    decorBottom.innerHTML = '─── ❀ ───';
+    decorBottom.style.cssText = `
+      color: ${sakuraColor};
+      font-size: 14px;
+      letter-spacing: 6px;
+      margin-top: 25px;
+      opacity: 0.5;
+    `;
+
     // Assemble modal
+    modal.appendChild(decorTop);
+    modal.appendChild(titleJp);
     modal.appendChild(title);
+    modal.appendChild(titleLine);
     modal.appendChild(prompt);
     modal.appendChild(this.inputElement);
     modal.appendChild(validation);
     modal.appendChild(submitBtn);
     modal.appendChild(errorMsg);
+    modal.appendChild(decorBottom);
 
     this.container.appendChild(modal);
 
-    // Add shake animation CSS
+    // Add animations and shake CSS
     const style = document.createElement('style');
+    style.id = 'username-overlay-styles';
     style.textContent = `
       @keyframes shake {
         0%, 100% { transform: translateX(0); }
         10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
         20%, 40%, 60%, 80% { transform: translateX(5px); }
       }
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes slideUp {
+        from { 
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to { 
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      #username-overlay input::placeholder {
+        color: rgba(244, 164, 96, 0.5);
+      }
     `;
-    document.head.appendChild(style);
+    
+    // Only add style if not already present
+    if (!document.getElementById('username-overlay-styles')) {
+      document.head.appendChild(style);
+    }
 
     // Add to DOM
     document.body.appendChild(this.container);

@@ -5,6 +5,7 @@ import FeatureManager from "../managers/FeatureManager.js";
 import LanguageManager from "../managers/LanguageManager.js";
 import stateManager from "../managers/StateManager.js";
 import ModalComponent from "../components/ModalComponent.js";
+import UsernameInputOverlay from "../ui/UsernameInputOverlay.js";
 
 /**
  * Menu scene - main game menu
@@ -14,6 +15,7 @@ export default class MenuScene extends Phaser.Scene {
     super({ key: "MenuScene" });
     this.settingsOverlay = null;
     this.modal = null;
+    this.usernameOverlay = null;
     this.languageManager = LanguageManager;
     this.stateManager = stateManager;
   }
@@ -24,6 +26,12 @@ export default class MenuScene extends Phaser.Scene {
 
     // Initialize FeatureManager
     FeatureManager.init();
+
+    // Load saved username from localStorage
+    const savedUsername = this.stateManager.getUsername();
+    if (savedUsername) {
+      this.registry.set("currentUsername", savedUsername);
+    }
 
     // Create modal component
     this.modal = new ModalComponent(this);
@@ -211,6 +219,30 @@ export default class MenuScene extends Phaser.Scene {
         }
       )
       .setOrigin(0.5);
+
+    // Show username prompt if no saved username exists
+    if (!savedUsername) {
+      this.showUsernamePrompt();
+    }
+  }
+
+  /**
+   * Show the username input overlay
+   * @param {Function} onComplete - Optional callback to execute after username is submitted
+   */
+  showUsernamePrompt(onComplete = null) {
+    this.usernameOverlay = new UsernameInputOverlay(this, (username) => {
+      this.registry.set("currentUsername", username);
+      this.stateManager.saveUsername(username);
+      
+      // Execute callback if provided (e.g., reopen settings)
+      if (onComplete) {
+        this.time.delayedCall(100, () => {
+          onComplete();
+        });
+      }
+    });
+    this.usernameOverlay.show();
   }
 
   /**
@@ -391,6 +423,10 @@ export default class MenuScene extends Phaser.Scene {
     this.settingsOverlay.add(desc);
 
     let yPos = panelTop + 145;
+
+    // Username section
+    this.createUsernameSection(this.settingsOverlay, yPos);
+    yPos += 70;
 
     // Language selector
     this.createLanguageSelector(this.settingsOverlay, yPos);
@@ -851,6 +887,89 @@ export default class MenuScene extends Phaser.Scene {
           }
           this.scene.restart();
         }
+      });
+    });
+  }
+
+  /**
+   * Create username section in settings
+   * @param {Phaser.GameObjects.Container} container - Settings container
+   * @param {number} y - Y position
+   */
+  createUsernameSection(container, y) {
+    const leftMargin = 120;
+
+    // Label
+    const label = this.add.text(leftMargin, y, this.languageManager.getText('menu.username') || 'Pseudo', {
+      fontSize: "24px",
+      fontFamily: "serif",
+      color: "#f4a460",
+      fontStyle: "bold"
+    });
+    container.add(label);
+
+    // Current username display
+    const currentUsername = this.registry.get("currentUsername") || this.languageManager.getText('username.notSet') || 'Non défini';
+    const usernameDisplay = this.add.text(leftMargin + 180, y, currentUsername, {
+      fontSize: "20px",
+      fontFamily: "serif",
+      color: DESIGN_CONSTANTS.COLORS.GOLD,
+      fontStyle: "bold"
+    });
+    container.add(usernameDisplay);
+
+    // Change button
+    const changeBtn = this.add.rectangle(
+      550, y,
+      120, 40,
+      DESIGN_CONSTANTS.COLORS.PRIMARY
+    );
+    changeBtn.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.GOLD);
+    changeBtn.setInteractive({ useHandCursor: true });
+    container.add(changeBtn);
+
+    const changeBtnText = this.add.text(550, y, this.languageManager.getText('menu.change') || 'Modifier', {
+      fontSize: "16px",
+      fontFamily: "serif",
+      color: "#ffffff"
+    }).setOrigin(0.5);
+    container.add(changeBtnText);
+
+    // Hover effects
+    changeBtn.on('pointerover', () => {
+      changeBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
+      changeBtnText.setColor("#000000");
+      this.tweens.add({
+        targets: [changeBtn, changeBtnText],
+        scaleX: 1.05,
+        scaleY: 1.05,
+        duration: 150,
+        ease: 'Back.easeOut'
+      });
+    });
+
+    changeBtn.on('pointerout', () => {
+      changeBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY);
+      changeBtnText.setColor("#ffffff");
+      this.tweens.add({
+        targets: [changeBtn, changeBtnText],
+        scaleX: 1,
+        scaleY: 1,
+        duration: 150
+      });
+    });
+
+    // Click handler - open username overlay
+    changeBtn.on('pointerdown', () => {
+      // Close settings overlay first
+      this.closeSettingsOverlay();
+      
+      // Show username input overlay, then reopen settings when done
+      this.time.delayedCall(300, () => {
+        this.showUsernamePrompt(() => {
+          // Reopen settings overlay after username is changed
+          this.openSettingsOverlay();
+        });
       });
     });
   }

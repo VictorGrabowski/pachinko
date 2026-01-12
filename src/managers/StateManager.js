@@ -137,6 +137,29 @@ class StateManager {
   }
 
   /**
+   * Save username/pseudo
+   * @param {string} username - Username to save
+   * @returns {boolean} Success status
+   */
+  saveUsername(username) {
+    try {
+      localStorage.setItem(`${this.storageKey}_username`, username);
+      return true;
+    } catch (e) {
+      console.error('Failed to save username:', e);
+      return false;
+    }
+  }
+
+  /**
+   * Get saved username
+   * @returns {string|null} Username or null if not set
+   */
+  getUsername() {
+    return localStorage.getItem(`${this.storageKey}_username`);
+  }
+
+  /**
    * Save a score entry to the scoreboard (maintains top 10 only)
    * @param {Object} entry - Score entry {username, score, date}
    * @returns {boolean} Success status

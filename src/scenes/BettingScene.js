@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import BudgetManager from "../managers/BudgetManager.js";
 import UsernameInputOverlay from "../ui/UsernameInputOverlay.js";
 import LanguageManager from "../managers/LanguageManager.js";
+import stateManager from "../managers/StateManager.js";
 import {
   DESIGN_CONSTANTS,
 } from "../config/gameConfig.js";
@@ -32,6 +33,7 @@ export default class BettingScene extends Phaser.Scene {
     if (!currentUsername) {
       this.usernameOverlay = new UsernameInputOverlay(this, (username) => {
         this.registry.set("currentUsername", username);
+        stateManager.saveUsername(username);
         this.usernameOverlay = null;
       });
       
@@ -168,6 +170,7 @@ export default class BettingScene extends Phaser.Scene {
     changeUsernameBtn.on("pointerdown", () => {
       this.usernameOverlay = new UsernameInputOverlay(this, (newUsername) => {
         this.registry.set("currentUsername", newUsername);
+        stateManager.saveUsername(newUsername);
         this.usernameText.setText(`${this.languageManager.getText("betting.player")} : ${newUsername}`);
         this.usernameOverlay = null;
       });

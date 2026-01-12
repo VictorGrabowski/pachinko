@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { DESIGN_CONSTANTS } from "../config/gameConfig.js";
+import FeatureManager from "../managers/FeatureManager.js";
 
 /**
  * Ball entity with trail effect and wabi-sabi aesthetic
@@ -14,30 +15,35 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     // Store radius for dynamic sizing
     this.ballRadius = radius;
 
+    // Scale sprite to match radius FIRST (sprite is designed for BALL_RADIUS = 12)
+    const scale = this.ballRadius / DESIGN_CONSTANTS.BALL_RADIUS;
+    this.setScale(scale);
+
     // Physics properties - use 80% of radius for hitbox to prevent blocking
     const hitboxRadius = this.ballRadius * 0.8;
-    this.setCircle(hitboxRadius);
+    // Center the circular body on the scaled sprite (base sprite is 24x24)
+    const spriteHalfSize = 12 * scale;
+    const bodyOffset = spriteHalfSize - hitboxRadius;
+    this.setCircle(hitboxRadius, bodyOffset, bodyOffset);
+    
     this.setBounce(DESIGN_CONSTANTS.BOUNCE_FACTOR);
     this.setCollideWorldBounds(false);
     this.setTint(DESIGN_CONSTANTS.COLORS.BALL);
 
-    // Scale sprite to match radius (sprite is designed for BALL_RADIUS = 12)
-    const scale = this.ballRadius / DESIGN_CONSTANTS.BALL_RADIUS;
-    this.setScale(scale);
-
-    // Visual trail for movement - SPECTACULAR EDITION
-    this.trail = scene.add.particles(x, y, "particle", {
-      speed: { min: 50, max: 100 },
-      scale: { start: 0.6, end: 0 },
-      alpha: { start: 1, end: 0 },
-      lifespan: 600,
-      tint: [DESIGN_CONSTANTS.COLORS.GOLD, DESIGN_CONSTANTS.COLORS.BALL, DESIGN_CONSTANTS.COLORS.SAKURA],
-      follow: this,
-      quantity: 3,
-      frequency: 30,
-      blendMode: 'ADD',
-      rotate: { start: 0, end: 360 },
-    });
+    // Trail system - get settings from FeatureManager (with fallback defaults)
+    this.trailLength = FeatureManager.getParameter("ballTrail", "length") || 25;
+    this.trailThickness = FeatureManager.getParameter("ballTrail", "thickness") || 3;
+    this.trailOpacity = FeatureManager.getParameter("ballTrail", "opacity") || 0.8;
+    this.trailColor = DESIGN_CONSTANTS.COLORS.GOLD; // Use gold for better visibility
+    this.positionHistory = [];
+    
+    // Check if trail is enabled (default to true if not found)
+    const trailFeature = FeatureManager.isEnabled("ballTrail");
+    this.trailEnabled = trailFeature !== false; // true if enabled or undefined
+    
+    // Graphics object for drawing the trail - each ball has its own
+    this.trailGraphics = scene.add.graphics();
+    this.trailGraphics.setDepth(5); // Above background, below UI
 
     // Add glow effect
     this.glowCircle = scene.add.circle(x, y, DESIGN_CONSTANTS.BALL_RADIUS * 2, DESIGN_CONSTANTS.COLORS.BALL, 0.3);
@@ -110,10 +116,24 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
   }
 
   /**
-   * Update glow position
+   * Update trail and glow position
    */
   preUpdate(time, delta) {
     super.preUpdate(time, delta);
+    
+    // Update position history for trail
+    if (this.active && this.trailEnabled) {
+      this.positionHistory.unshift({ x: this.x, y: this.y });
+      
+      // Limit trail length
+      if (this.positionHistory.length > this.trailLength) {
+        this.positionHistory.pop();
+      }
+      
+      // Draw the trail
+      this.drawTrail();
+    }
+    
     if (this.glowCircle && this.active) {
       this.glowCircle.setPosition(this.x, this.y);
     }
@@ -123,11 +143,71 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
   }
 
   /**
-   * Clean up particles before destroying
+   * Draw a smooth thin trail with gradient transparency
+   */
+  drawTrail() {
+    if (!this.trailGraphics || this.positionHistory.length < 2) return;
+    
+    this.trailGraphics.clear();
+    
+    const points = this.positionHistory;
+    
+    // Draw a single smooth path using quadratic bezier curves
+    // This creates a continuous smooth line instead of segmented circles
+    for (let i = 0; i < points.length - 1; i++) {
+      const t = i / (points.length - 1); // 0 to 1
+      const alpha = this.trailOpacity * (1 - t); // Fade out
+      const thickness = Math.max(0.5, this.trailThickness * (1 - t * 0.5)); // Thin out slightly
+      
+      if (alpha <= 0.01) continue;
+      
+      this.trailGraphics.lineStyle(thickness, this.trailColor, alpha);
+      
+      const p0 = points[i];
+      const p1 = points[i + 1];
+      
+      // Simple line segment for crisp thin trail
+      this.trailGraphics.beginPath();
+      this.trailGraphics.moveTo(p0.x, p0.y);
+      this.trailGraphics.lineTo(p1.x, p1.y);
+      this.trailGraphics.strokePath();
+    }
+  }
+
+  /**
+   * Set trail length dynamically
+   * @param {number} length - Number of points in the trail
+   */
+  setTrailLength(length) {
+    this.trailLength = length;
+    // Trim history if needed
+    while (this.positionHistory.length > length) {
+      this.positionHistory.pop();
+    }
+  }
+
+  /**
+   * Set trail color dynamically
+   * @param {number} color - Hex color value
+   */
+  setTrailColor(color) {
+    this.trailColor = color;
+  }
+
+  /**
+   * Set trail thickness dynamically
+   * @param {number} thickness - Base thickness in pixels
+   */
+  setTrailThickness(thickness) {
+    this.trailThickness = thickness;
+  }
+
+  /**
+   * Clean up trail graphics before destroying
    */
   destroy() {
-    if (this.trail) {
-      this.trail.destroy();
+    if (this.trailGraphics) {
+      this.trailGraphics.destroy();
     }
     if (this.glowCircle) {
       this.glowCircle.destroy();

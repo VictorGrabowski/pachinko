@@ -182,6 +182,78 @@ export const FEATURES = [
 
   // ===== VISUAL FEATURES =====
   {
+    id: "ballTrail",
+    name: "Traînée de la Boule",
+    description: "Affiche une traînée derrière la boule montrant son parcours",
+    category: "visual",
+    enabled: true,
+    parameters: [
+      {
+        key: "length",
+        label: "Longueur de la traînée",
+        type: "number",
+        default: 25,
+        min: 5,
+        max: 50,
+        step: 5
+      },
+      {
+        key: "thickness",
+        label: "Épaisseur",
+        type: "number",
+        default: 3,
+        min: 1,
+        max: 8,
+        step: 0.5
+      },
+      {
+        key: "opacity",
+        label: "Opacité maximale",
+        type: "number",
+        default: 0.8,
+        min: 0.2,
+        max: 1.0,
+        step: 0.1
+      }
+    ]
+  },
+  {
+    id: "pinHitEffects",
+    name: "Effets de Collision Pin",
+    description: "Particules et effets visuels quand la boule touche un pin",
+    category: "visual",
+    enabled: true,
+    parameters: [
+      {
+        key: "particleDuration",
+        label: "Durée des particules (ms)",
+        type: "number",
+        default: 200,
+        min: 50,
+        max: 500,
+        step: 25
+      },
+      {
+        key: "particleCount",
+        label: "Nombre de particules",
+        type: "number",
+        default: 6,
+        min: 3,
+        max: 15,
+        step: 1
+      },
+      {
+        key: "shockwaveDuration",
+        label: "Durée onde de choc (ms)",
+        type: "number",
+        default: 150,
+        min: 50,
+        max: 400,
+        step: 25
+      }
+    ]
+  },
+  {
     id: "particles",
     name: "Effets de Particules",
     description: "Affiche les particules de sakura et autres effets visuels",

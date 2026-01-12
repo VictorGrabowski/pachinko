@@ -61,6 +61,8 @@ export const TRANSLATIONS = {
       paletteTitle: "Palette de couleurs",
       settings: "Paramètres",
       language: "Langue",
+      username: "Pseudo",
+      change: "Modifier",
       resetScoreboard: "Réinitialiser Classement",
       resetScoreboardConfirm: "Êtes-vous sûr de vouloir effacer tous les scores ?",
       yes: "Oui",
@@ -114,6 +116,7 @@ export const TRANSLATIONS = {
       submit: "Commencer à jouer",
       validation: "3-12 caractères alphanumériques",
       error: "Pseudo invalide",
+      notSet: "Non défini",
     },
   },
   en: {
@@ -126,6 +129,8 @@ export const TRANSLATIONS = {
       paletteTitle: "Color Palette",
       settings: "Settings",
       language: "Language",
+      username: "Username",
+      change: "Change",
       resetScoreboard: "Reset Scoreboard",
       resetScoreboardConfirm: "Are you sure you want to clear all scores?",
       yes: "Yes",
@@ -179,6 +184,7 @@ export const TRANSLATIONS = {
       submit: "Start Playing",
       validation: "3-12 alphanumeric characters",
       error: "Invalid username",
+      notSet: "Not set",
     },
   },
 };

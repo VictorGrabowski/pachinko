@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { DESIGN_CONSTANTS } from "../config/gameConfig.js";
+import FeatureManager from "../managers/FeatureManager.js";
 
 /**
  * Pin entity with visual feedback
@@ -22,6 +23,12 @@ export default class Pin extends Phaser.Physics.Arcade.Sprite {
    */
   onHit() {
     this.hitCount++;
+    
+    // Get effect settings from FeatureManager
+    const effectsEnabled = FeatureManager.isEnabled("pinHitEffects") !== false;
+    const particleDuration = FeatureManager.getParameter("pinHitEffects", "particleDuration") || 200;
+    const particleCount = FeatureManager.getParameter("pinHitEffects", "particleCount") || 6;
+    const shockwaveDuration = FeatureManager.getParameter("pinHitEffects", "shockwaveDuration") || 150;
 
     // Visual feedback - brief glow and scale
     this.scene.tweens.add({
@@ -33,27 +40,29 @@ export default class Pin extends Phaser.Physics.Arcade.Sprite {
       ease: "Sine.easeInOut",
     });
 
+    if (!effectsEnabled) return;
+
     // Explosion de particules à chaque hit
     const particles = this.scene.add.particles(this.x, this.y, "particle", {
       speed: { min: 100, max: 200 },
-      scale: { start: 0.5, end: 0 },
+      scale: { start: 0.4, end: 0 },
       alpha: { start: 1, end: 0 },
-      lifespan: 400,
-      quantity: 10,
+      lifespan: particleDuration,
+      quantity: particleCount,
       tint: [DESIGN_CONSTANTS.COLORS.GOLD, DESIGN_CONSTANTS.COLORS.PRIMARY, DESIGN_CONSTANTS.COLORS.SAKURA],
       blendMode: 'ADD',
       angle: { min: 0, max: 360 },
     });
-    this.scene.time.delayedCall(400, () => particles.destroy());
+    this.scene.time.delayedCall(particleDuration, () => particles.destroy());
 
     // Onde de choc
-    const shockwave = this.scene.add.circle(this.x, this.y, 10, DESIGN_CONSTANTS.COLORS.GOLD, 0.6);
+    const shockwave = this.scene.add.circle(this.x, this.y, 10, DESIGN_CONSTANTS.COLORS.GOLD, 0.5);
     shockwave.setBlendMode('ADD');
     this.scene.tweens.add({
       targets: shockwave,
-      scale: 3,
+      scale: 2.5,
       alpha: 0,
-      duration: 300,
+      duration: shockwaveDuration,
       ease: 'Cubic.easeOut',
       onComplete: () => shockwave.destroy(),
     });
