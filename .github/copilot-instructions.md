@@ -6,6 +6,14 @@ Japanese-inspired Pachinko game built with **Phaser 3** + **Vite**. Written in *
 
 ## Architecture Principles
 
+### SOLID & Clean Code
+
+This project follows SOLID principles and Clean Code practices:
+
+- **Single Responsibility**: Each module has one reason to change (gameplay logic in `gameplay/`, UI in `ui/`, etc.)
+- **Open/Closed**: Extend via `FeatureManager` configuration, not by modifying core code
+- **Dependency Inversion**: Use `ServiceLocator` and `EventBus` instead of direct imports for loose coupling
+
 ### Scene Flow
 ```
 BootScene → PreloadScene → MenuScene → BettingScene → GameScene + UIScene (parallel) → GameOverScene
@@ -13,9 +21,37 @@ BootScene → PreloadScene → MenuScene → BettingScene → GameScene + UIScen
                                                                                       ScoreboardScene
 ```
 
-- **GameScene**: Core gameplay, physics, entities. Runs in parallel with UIScene.
-- **UIScene**: Non-blocking HUD overlay. Listens to GameScene events via `this.scene.get('UIScene').events.emit()`.
+- **GameScene**: Thin scene that delegates to gameplay modules. Runs in parallel with UIScene.
+- **UIScene**: Non-blocking HUD overlay. Listens via `EventBus` (preferred) or `this.scene.get('UIScene').events.emit()`.
 - All scenes in `src/scenes/`, registered in `main.js` via `GAME_CONFIG.scene` array.
+
+### Core Infrastructure (`src/core/`)
+
+- **ServiceLocator**: Dependency injection container. Register services in `main.js`, retrieve anywhere.
+- **EventBus**: Decoupled event communication between scenes/modules. Use `GameEvents` constants for event names.
+
+```javascript
+// Registering (in main.js or BootScene)
+ServiceLocator.register('audioSystem', new AudioSystem(game));
+
+// Retrieving (anywhere)
+const audio = ServiceLocator.get('audioSystem');
+
+// Event communication
+import EventBus, { GameEvents } from '../core/EventBus.js';
+EventBus.emit(GameEvents.SCORE_UPDATE, { score: 100 });
+EventBus.on(GameEvents.SCORE_UPDATE, this.handleScore, this);
+```
+
+### Gameplay Modules (`src/gameplay/`)
+
+Extracted from GameScene to follow Single Responsibility Principle:
+
+- **PinGridManager**: Pin creation, layout, and moving pins animation
+- **BallLauncher**: Ball placeholder, spawning, hardcore mode oscillators
+- **CollisionHandler**: Pin/bucket/creature collision logic
+- **ScoringSystem**: Score calculation, multipliers, combo tracking
+- **CreatureManager**: Yokai creature spawning and behavior
 
 ### Entity-Component Pattern
 
@@ -98,12 +134,13 @@ npm run preview  # Preview production build
 
 ## Code Conventions
 
-1. **File Organization**: Group by feature domain (`entities/`, `managers/`, `scenes/`, `ui/`, `components/`), not by type.
+1. **File Organization**: Group by feature domain (`core/`, `gameplay/`, `entities/`, `managers/`, `scenes/`, `ui/`, `ui/controls/`, `components/`).
 2. **Import Paths**: Always use `.js` extension in imports: `import Ball from './entities/Ball.js'`
-3. **Scene Communication**: Use `this.scene.get('OtherScene')` or `this.registry` for cross-scene data.
+3. **Scene Communication**: Prefer `EventBus` for decoupled events, or `this.scene.get('OtherScene')` / `this.registry` for direct access.
 4. **Physics Groups**: Create collision groups in `create()`, handle in `update()` loop.
 5. **Multi-language UI**: All user-facing text via `LanguageManager.getText('key')`. Supports FR/EN.
-6. **UI Components**: Reusable panels in `src/ui/` extend `Phaser.GameObjects.Container`. HTML overlays in `src/components/`.
+6. **UI Components**: Reusable Phaser containers in `src/ui/`. HTML controls in `src/ui/controls/` (Slider, Toggle, Select). HTML overlays in `src/components/`.
+7. **Dependency Injection**: Use `ServiceLocator.get('service')` instead of direct singleton imports for testability.
 
 ## Common Patterns
 
@@ -120,6 +157,11 @@ this.physics.add.collider(ball, pins, this.onBallHitPin, null, this);
 
 ### Emitting Events to UIScene
 ```javascript
+// Preferred: EventBus (decoupled)
+import EventBus, { GameEvents } from '../core/EventBus.js';
+EventBus.emit(GameEvents.SCORE_UPDATE, { score: this.score });
+
+// Alternative: Direct scene reference
 this.scene.get('UIScene').events.emit('scoreUpdate', this.score);
 ```
 
