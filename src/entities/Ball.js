@@ -19,8 +19,8 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     const scale = this.ballRadius / DESIGN_CONSTANTS.BALL_RADIUS;
     this.setScale(scale);
 
-    // Physics properties - use 90% of radius for hitbox (better collision detection)
-    const hitboxRadius = this.ballRadius * 0.9;
+    // Physics properties - use 80% of radius for hitbox (better collision detection)
+    const hitboxRadius = this.ballRadius * 0.8;
     // Center the circular body on the scaled sprite (base sprite is 24x24)
     const spriteHalfSize = 12 * scale;
     const bodyOffset = spriteHalfSize - hitboxRadius;
