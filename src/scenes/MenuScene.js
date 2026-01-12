@@ -3,7 +3,7 @@ import { DESIGN_CONSTANTS, TRANSLATIONS, COLOR_PALETTES, getActivePalette, setAc
 import { CATEGORY_LABELS } from "../config/featureConfig.js";
 import FeatureManager from "../managers/FeatureManager.js";
 import LanguageManager from "../managers/LanguageManager.js";
-import StateManager from "../managers/StateManager.js";
+import stateManager from "../managers/StateManager.js";
 import ModalComponent from "../components/ModalComponent.js";
 
 /**
@@ -15,7 +15,7 @@ export default class MenuScene extends Phaser.Scene {
     this.settingsOverlay = null;
     this.modal = null;
     this.languageManager = LanguageManager;
-    this.stateManager = new StateManager();
+    this.stateManager = stateManager;
   }
 
   create() {

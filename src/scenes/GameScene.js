@@ -3,7 +3,7 @@ import Ball from "../entities/Ball.js";
 import Pin from "../entities/Pin.js";
 import AudioSystem from "../systems/AudioSystem.js";
 import Creature from "../entities/Creature.js";
-import StateManager from "../managers/StateManager.js";
+import stateManager from "../managers/StateManager.js";
 import LanguageManager from "../managers/LanguageManager.js";
 import {
   DESIGN_CONSTANTS,
@@ -772,7 +772,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Show "Eaten!" text
     const eatenText = this.add
-      .text(ball.x, ball.y - 30, "Eaten!", {
+      .text(ball.x, ball.y - 30, this.languageManager.getText("creature.eaten"), {
         fontSize: "24px",
         color: "#FF3333",
         fontStyle: "bold",
@@ -874,11 +874,11 @@ export default class GameScene extends Phaser.Scene {
       });
     }
 
-    // Check for balls that fell off screen
-    this.balls.forEach((ball, index) => {
+    // Check for balls that fell off screen (using filter to avoid mutation during iteration)
+    const previousBallCount = this.balls.length;
+    this.balls = this.balls.filter((ball) => {
       if (ball.y > 1050 && ball.active) {
         ball.destroy();
-        this.balls.splice(index, 1);
         this.activeBalls--;
         this.lives--;
         
@@ -892,7 +892,9 @@ export default class GameScene extends Phaser.Scene {
         if (this.lives <= 0) {
           this.gameOver();
         }
+        return false; // Remove from array
       }
+      return true; // Keep in array
     });
   }
 
@@ -974,7 +976,6 @@ export default class GameScene extends Phaser.Scene {
       if (!canContinue) {
         // Balance < 100 : Fin du cycle, GameOverScene
         const username = this.registry.get("currentUsername") || "Player";
-        const stateManager = new StateManager();
         stateManager.saveScoreEntry({
           username: username,
           score: winningsResult.balanceMax,

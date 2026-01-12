@@ -54,7 +54,7 @@ export default class BettingScene extends Phaser.Scene {
 
     // Title
     this.add
-      .text(centerX, 150, "Placer votre mise", {
+      .text(centerX, 150, this.languageManager.getText("betting.title"), {
         fontSize: "48px",
         color: "#FFD700",
         fontFamily: "serif",
@@ -63,9 +63,9 @@ export default class BettingScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     // Username display
-    const username = this.registry.get("currentUsername") || "Joueur";
+    const username = this.registry.get("currentUsername") || this.languageManager.getText("betting.player");
     this.usernameText = this.add
-      .text(centerX, 220, `Joueur : ${username}`, {
+      .text(centerX, 220, `${this.languageManager.getText("betting.player")} : ${username}`, {
         fontSize: "22px",
         color: "#F4A460",
         fontFamily: "serif",
@@ -101,7 +101,7 @@ export default class BettingScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     this.startButtonText = this.add
-      .text(centerX, 780, "Commencer la partie", {
+      .text(centerX, 780, this.languageManager.getText("betting.startGame"), {
         fontSize: "28px",
         color: "#FFFFFF",
         fontFamily: "serif",
@@ -133,7 +133,8 @@ export default class BettingScene extends Phaser.Scene {
       const betResult = this.budgetManager.placeBet(this.selectedBet);
 
       if (!betResult.success) {
-        this.showStatus(betResult.message, "#FF6B35");
+        const errorMessage = this.languageManager.getText(betResult.errorKey);
+        this.showStatus(errorMessage, "#FF6B35");
         return;
       }
 
@@ -149,7 +150,7 @@ export default class BettingScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     this.add
-      .text(centerX, 860, "Changer de pseudo", {
+      .text(centerX, 860, this.languageManager.getText("betting.changeUsername"), {
         fontSize: "20px",
         color: "#FFFFFF",
         fontFamily: "serif",
@@ -167,7 +168,7 @@ export default class BettingScene extends Phaser.Scene {
     changeUsernameBtn.on("pointerdown", () => {
       this.usernameOverlay = new UsernameInputOverlay(this, (newUsername) => {
         this.registry.set("currentUsername", newUsername);
-        this.usernameText.setText(`Joueur : ${newUsername}`);
+        this.usernameText.setText(`${this.languageManager.getText("betting.player")} : ${newUsername}`);
         this.usernameOverlay = null;
       });
       this.usernameOverlay.show();
@@ -175,7 +176,7 @@ export default class BettingScene extends Phaser.Scene {
 
     // Back button
     this.backButton = this.add
-      .text(40, 40, "← Menu", {
+      .text(40, 40, this.languageManager.getText("betting.backToMenu"), {
         fontSize: "20px",
         color: "#F4A460",
         fontFamily: "serif",

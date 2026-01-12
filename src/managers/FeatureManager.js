@@ -1,5 +1,5 @@
 import { FEATURES } from '../config/featureConfig.js';
-import StateManager from './StateManager.js';
+import stateManager from './StateManager.js';
 
 /**
  * FeatureManager - Centralized feature configuration system
@@ -17,7 +17,7 @@ import StateManager from './StateManager.js';
 class FeatureManagerClass {
   constructor() {
     this.features = new Map();
-    this.stateManager = new StateManager();
+    this.stateManager = stateManager;
     this.initialized = false;
   }
 

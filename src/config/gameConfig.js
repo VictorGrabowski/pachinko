@@ -74,6 +74,9 @@ export const TRANSLATIONS = {
     game: {
       combo: "Combo",
     },
+    creature: {
+      eaten: "Mangé !",
+    },
     gameOver: {
       title: "Partie Terminée",
       haiku: "Les billes tombent\nLe temps s'écoule\nEt revient encore",
@@ -94,6 +97,15 @@ export const TRANSLATIONS = {
       noScores: "Aucun score enregistré",
       back: "Retour",
       top10: "Top 10",
+    },
+    betting: {
+      title: "Placer votre mise",
+      player: "Joueur",
+      startGame: "Commencer la partie",
+      changeUsername: "Changer de pseudo",
+      backToMenu: "← Menu",
+      invalidBet: "Mise invalide. Choisissez 100, 200, 1000 ou 2000 Yens.",
+      insufficientBalance: "Balance insuffisante pour cette mise.",
     },
     username: {
       title: "Bienvenue",
@@ -127,6 +139,9 @@ export const TRANSLATIONS = {
     game: {
       combo: "Combo",
     },
+    creature: {
+      eaten: "Eaten!",
+    },
     gameOver: {
       title: "Game Over",
       haiku: "The balls are falling\nTime flows away\nAnd comes back again",
@@ -147,6 +162,15 @@ export const TRANSLATIONS = {
       noScores: "No scores recorded",
       back: "Back",
       top10: "Top 10",
+    },
+    betting: {
+      title: "Place your bet",
+      player: "Player",
+      startGame: "Start game",
+      changeUsername: "Change username",
+      backToMenu: "← Menu",
+      invalidBet: "Invalid bet. Choose 100, 200, 1000 or 2000 Yens.",
+      insufficientBalance: "Insufficient balance for this bet.",
     },
     username: {
       title: "Welcome",

@@ -1,9 +1,24 @@
 /**
  * State Manager - manages game state persistence
+ * Singleton pattern for centralized state management
  */
-export default class StateManager {
+class StateManager {
   constructor() {
+    if (StateManager.instance) {
+      return StateManager.instance;
+    }
     this.storageKey = 'pachinko_game_state';
+    StateManager.instance = this;
+  }
+
+  /**
+   * Get singleton instance
+   */
+  static getInstance() {
+    if (!StateManager.instance) {
+      StateManager.instance = new StateManager();
+    }
+    return StateManager.instance;
   }
 
   /**
@@ -215,3 +230,7 @@ export default class StateManager {
     return rank !== -1 ? rank + 1 : null;
   }
 }
+
+// Export singleton instance
+const stateManager = new StateManager();
+export default stateManager;

@@ -5,7 +5,7 @@
 import Phaser from "phaser";
 import { DESIGN_CONSTANTS } from "../config/gameConfig.js";
 import LanguageManager from "../managers/LanguageManager.js";
-import StateManager from "../managers/StateManager.js";
+import stateManager from "../managers/StateManager.js";
 import { formatNumber } from "../utils/helpers.js";
 
 export default class ScoreboardScene extends Phaser.Scene {
@@ -15,7 +15,7 @@ export default class ScoreboardScene extends Phaser.Scene {
 
   create() {
     this.languageManager = LanguageManager;
-    this.stateManager = new StateManager();
+    this.stateManager = stateManager;
     this.textElements = [];
 
     // Background with fade

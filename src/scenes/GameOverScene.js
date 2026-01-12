@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { DESIGN_CONSTANTS, TRANSLATIONS } from "../config/gameConfig.js";
 import { formatScore } from "../utils/helpers.js";
-import StateManager from "../managers/StateManager.js";
+import stateManager from "../managers/StateManager.js";
 import LanguageManager from "../managers/LanguageManager.js";
 
 /**
@@ -16,7 +16,7 @@ export default class GameOverScene extends Phaser.Scene {
     this.finalScore = data.balanceMax || 0;
     this.username = data.username || "Player";
     this.cycleEnded = data.cycleEnded || false;
-    this.stateManager = new StateManager();
+    this.stateManager = stateManager;
     this.languageManager = LanguageManager;
   }
 

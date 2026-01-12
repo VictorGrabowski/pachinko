@@ -69,14 +69,14 @@ export default class BudgetManager {
     if (![100, 200, 1000, 2000].includes(betAmount)) {
       return { 
         success: false, 
-        message: "Mise invalide. Choisissez 100, 200, 1000 ou 2000 Yens." 
+        errorKey: "betting.invalidBet"
       };
     }
 
     if (betAmount > this.balance) {
       return { 
         success: false, 
-        message: "Balance insuffisante pour cette mise." 
+        errorKey: "betting.insufficientBalance"
       };
     }
 

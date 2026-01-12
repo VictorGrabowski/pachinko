@@ -2,7 +2,7 @@
  * Language Manager - Manages game localization and translations
  * Singleton pattern for centralized language management
  */
-import StateManager from './StateManager.js';
+import stateManager from './StateManager.js';
 import { TRANSLATIONS } from '../config/gameConfig.js';
 
 class LanguageManager {
@@ -11,7 +11,7 @@ class LanguageManager {
       return LanguageManager.instance;
     }
     
-    this.stateManager = new StateManager();
+    this.stateManager = stateManager;
     this.currentLanguage = this.stateManager.getLanguagePreference() || 'fr';
     this.translations = TRANSLATIONS;
     this.listeners = [];
