@@ -42,60 +42,34 @@ export default class Pin extends Phaser.Physics.Arcade.Sprite {
 
     if (!effectsEnabled) return;
 
-    // Explosion de particules à chaque hit
+    // Petites particules discrètes à chaque hit (remplace l'onde de choc)
+    const sparkCount = Math.min(particleCount, 4); // Maximum 4 particules pour rester discret
     const particles = this.scene.add.particles(this.x, this.y, "particle", {
-      speed: { min: 100, max: 200 },
-      scale: { start: 0.4, end: 0 },
-      alpha: { start: 1, end: 0 },
-      lifespan: particleDuration,
-      quantity: particleCount,
-      tint: [DESIGN_CONSTANTS.COLORS.GOLD, DESIGN_CONSTANTS.COLORS.PRIMARY, DESIGN_CONSTANTS.COLORS.SAKURA],
+      speed: { min: 60, max: 120 },
+      scale: { start: 0.15, end: 0 },
+      alpha: { start: 0.8, end: 0 },
+      lifespan: Math.min(particleDuration, 150),
+      quantity: sparkCount,
+      tint: [DESIGN_CONSTANTS.COLORS.GOLD, DESIGN_CONSTANTS.COLORS.PRIMARY],
       blendMode: 'ADD',
       angle: { min: 0, max: 360 },
+      gravityY: 50,
     });
-    this.scene.time.delayedCall(particleDuration, () => particles.destroy());
+    this.scene.time.delayedCall(150, () => particles.destroy());
 
-    // Onde de choc
-    const shockwave = this.scene.add.circle(this.x, this.y, 10, DESIGN_CONSTANTS.COLORS.GOLD, 0.5);
-    shockwave.setBlendMode('ADD');
-    this.scene.tweens.add({
-      targets: shockwave,
-      scale: 2.5,
-      alpha: 0,
-      duration: shockwaveDuration,
-      ease: 'Cubic.easeOut',
-      onComplete: () => shockwave.destroy(),
-    });
-
-    // Kintsugi effect for multiple hits - ENHANCED
+    // Kintsugi effect for multiple hits - particules dorées subtiles
     if (this.hitCount > 2) {
-      const fx = this.scene.add.circle(
-        this.x,
-        this.y,
-        20,
-        DESIGN_CONSTANTS.COLORS.GOLD,
-        0.8
-      );
-      fx.setBlendMode('ADD');
-      this.scene.tweens.add({
-        targets: fx,
-        scale: 4,
-        alpha: 0,
-        duration: 600,
-        ease: 'Cubic.easeOut',
-        onComplete: () => fx.destroy(),
+      const kintsugiParticles = this.scene.add.particles(this.x, this.y, "particle", {
+        speed: { min: 80, max: 150 },
+        scale: { start: 0.2, end: 0 },
+        alpha: { start: 1, end: 0 },
+        lifespan: 200,
+        quantity: 3,
+        tint: [DESIGN_CONSTANTS.COLORS.GOLD, 0xffffff],
+        blendMode: 'ADD',
+        angle: { min: 0, max: 360 },
       });
-      
-      // Flash blanc
-      const flash = this.scene.add.circle(this.x, this.y, 30, 0xffffff, 0.8);
-      flash.setBlendMode('ADD');
-      this.scene.tweens.add({
-        targets: flash,
-        scale: 2,
-        alpha: 0,
-        duration: 200,
-        onComplete: () => flash.destroy(),
-      });
+      this.scene.time.delayedCall(200, () => kintsugiParticles.destroy());
     }
   }
 }
