@@ -70,6 +70,7 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
 
     this.isActive = true;
     this.pinHitCount = 0;
+    this.lastHitPin = null; // Track the last pin hit to prevent double-counting
   }
 
   /**
@@ -87,32 +88,40 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
   }
 
   /**
-   * Increment pin hit counter
+   * Increment pin hit counter if a different pin is hit
+   * @param {Pin} pin - The pin that was hit
+   * @returns {boolean} - True if combo was incremented, false if same pin hit again
    */
-  hitPin() {
+  hitPin(pin) {
+    // Only count if it's a different pin than the last one hit
+    if (pin === this.lastHitPin) {
+      return false; // Same pin, don't increment
+    }
+    
+    this.lastHitPin = pin;
     this.pinHitCount++;
     
-    // Update combo display
-    if (this.pinHitCount >= 3) {
-      const combo = this.getCombo();
-      this.comboText.setText(`x${combo}`);
-      this.comboText.setVisible(true);
-      
-      // Pulse effect on combo text
-      this.scene.tweens.add({
-        targets: this.comboText,
-        scale: { from: 1.5, to: 1 },
-        duration: 200,
-        ease: 'Back.easeOut',
-      });
-    }
+    // Update combo display for every pin hit
+    const combo = this.getCombo();
+    this.comboText.setText(`x${combo}`);
+    this.comboText.setVisible(true);
+    
+    // Pulse effect on combo text
+    this.scene.tweens.add({
+      targets: this.comboText,
+      scale: { from: 1.5, to: 1 },
+      duration: 200,
+      ease: 'Back.easeOut',
+    });
+    
+    return true;
   }
 
   /**
-   * Get combo value based on pin hits
+   * Get combo value based on pin hits (each pin hit = +1 combo)
    */
   getCombo() {
-    return Math.floor(this.pinHitCount / 3);
+    return this.pinHitCount;
   }
 
   /**

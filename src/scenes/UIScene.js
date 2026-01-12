@@ -72,7 +72,6 @@ export default class UIScene extends Phaser.Scene {
     );
     this.cashOutButton.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.GOLD, 0.6);
     this.cashOutButton.setInteractive({ useHandCursor: true });
-    this.cashOutButton.setAlpha(0.5); // Disabled by default
 
     // Arrow pointing left
     this.cashOutArrow = this.add.text(cashOutX - 45, cashOutY, "←", {
@@ -80,7 +79,6 @@ export default class UIScene extends Phaser.Scene {
       color: "#FFD700",
       fontFamily: "serif",
     }).setOrigin(0.5);
-    this.cashOutArrow.setAlpha(0.5);
 
     this.cashOutText = this.add.text(cashOutX + 5, cashOutY, "CASH OUT", {
       fontSize: "16px",
@@ -88,7 +86,9 @@ export default class UIScene extends Phaser.Scene {
       fontFamily: "serif",
       fontStyle: "bold",
     }).setOrigin(0.5);
-    this.cashOutText.setAlpha(0.5);
+
+    // Cash out enabled by default (no balls falling at start)
+    this.cashOutEnabled = true;
 
     this.cashOutButton.on("pointerover", () => {
       if (this.cashOutEnabled) {
@@ -135,8 +135,6 @@ export default class UIScene extends Phaser.Scene {
       this.events.on("hardcoreForceUpdate", this.updateForceIndicator, this);
       this.events.on("hardcorePlaceholderMove", this.updateAngleArrowPosition, this);
     }
-    
-    this.cashOutEnabled = true; // Enabled by default (no active balls at start)
   }
 
   /**
@@ -173,19 +171,23 @@ export default class UIScene extends Phaser.Scene {
   }
 
   /**
-   * Update cash out button state
+   * Update cash out button state - disabled when balls are falling
    */
   updateCashOutButton(hasActiveBalls) {
     this.cashOutEnabled = !hasActiveBalls;
     
     if (this.cashOutEnabled) {
+      // Enable button - full opacity and interactive cursor
       this.cashOutButton.setAlpha(1);
       this.cashOutText.setAlpha(1);
       this.cashOutArrow.setAlpha(1);
+      this.cashOutButton.setInteractive({ useHandCursor: true });
     } else {
-      this.cashOutButton.setAlpha(0.5);
-      this.cashOutText.setAlpha(0.5);
-      this.cashOutArrow.setAlpha(0.5);
+      // Disable button - grayed out and no cursor
+      this.cashOutButton.setAlpha(0.3);
+      this.cashOutText.setAlpha(0.3);
+      this.cashOutArrow.setAlpha(0.3);
+      this.cashOutButton.disableInteractive();
     }
   }
 

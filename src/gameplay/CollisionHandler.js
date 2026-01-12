@@ -82,24 +82,29 @@ export default class CollisionHandler {
     handlePinHit(ball, pin) {
         if (!ball.active) return;
 
-        // Visual and audio feedback
-        pin.onHit();
-        ball.hitPin();
+        // Only count hit if it's a different pin than the last one
+        const wasNewPin = ball.hitPin(pin);
         
-        if (this.audioSystem) {
-            this.audioSystem.play("coin");
-        }
+        // Visual feedback on pin (always show)
+        pin.onHit();
+        
+        // Audio and combo effects only if it's a new pin
+        if (wasNewPin) {
+            if (this.audioSystem) {
+                this.audioSystem.play("coin");
+            }
 
-        // Screen shake effect
-        this.scene.cameras.main.shake(50, 0.002);
+            // Screen shake effect
+            this.scene.cameras.main.shake(50, 0.002);
 
-        // Emit event for UI updates
-        EventBus.emit(GameEvents.BALL_HIT_PIN, { ball, pin, combo: ball.getCombo() });
+            // Emit event for UI updates
+            EventBus.emit(GameEvents.BALL_HIT_PIN, { ball, pin, combo: ball.getCombo() });
 
-        // Combo effects
-        const combo = ball.getCombo();
-        if (combo > 0) {
-            this.createComboParticles(ball);
+            // Combo effects
+            const combo = ball.getCombo();
+            if (combo > 0) {
+                this.createComboParticles(ball);
+            }
         }
     }
 

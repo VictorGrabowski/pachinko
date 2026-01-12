@@ -578,36 +578,43 @@ export default class GameScene extends Phaser.Scene {
   onPinHit(ball, pin) {
     if (!ball.active) return;
 
-    // Visual and audio feedback
+    // Only count hit if it's a different pin than the last one
+    const wasNewPin = ball.hitPin(pin);
+    
+    // Visual feedback on pin (always show)
     pin.onHit();
-    ball.hitPin();
-    if (this.audioSystem) {
-      this.audioSystem.play("coin");
-    }
+    
+    // Audio and combo effects only if it's a new pin
+    if (wasNewPin) {
+      if (this.audioSystem) {
+        this.audioSystem.play("coin");
+      }
 
-    // Screen shake effect
-    this.cameras.main.shake(50, 0.002);
+      // Screen shake effect
+      this.cameras.main.shake(50, 0.002);
 
-    // Combo effects
-    const combo = ball.getCombo();
-    if (combo > 0) {
-      // Rainbow trail for combos
-      const rainbow = this.add.particles(ball.x, ball.y, "particle", {
-        speed: { min: 50, max: 150 },
-        scale: { start: 0.8, end: 0 },
-        alpha: { start: 1, end: 0 },
-        lifespan: 500,
-        quantity: 5,
-        tint: [0xff0000, 0xff7700, 0xffff00, 0x00ff00, 0x0000ff, 0xff00ff],
-        blendMode: 'ADD',
-      });
-      this.time.delayedCall(500, () => rainbow.destroy());
-    }
-
-    // Increase sakura intensity with combo (if particles enabled)
-    if (this.sakura) {
+      // Combo effects
+      const combo = ball.getCombo();
       if (combo > 0) {
-        this.sakura.setFrequency(Math.max(200, 500 - combo * 50));
+        // Rainbow trail for combos
+        const rainbow = this.add.particles(ball.x, ball.y, "particle", {
+          speed: { min: 50, max: 150 },
+          scale: { start: 0.8, end: 0 },
+          alpha: { start: 1, end: 0 },
+          lifespan: 500,
+          quantity: 5,
+          tint: [0xff0000, 0xff7700, 0xffff00, 0x00ff00, 0x0000ff, 0xff00ff],
+          blendMode: 'ADD',
+        });
+        this.time.delayedCall(500, () => rainbow.destroy());
+      }
+
+      // Increase sakura intensity with combo (if particles enabled)
+      if (this.sakura) {
+        const combo = ball.getCombo();
+        if (combo > 0) {
+          this.sakura.setFrequency(Math.max(200, 500 - combo * 50));
+        }
       }
     }
   }
@@ -962,8 +969,21 @@ export default class GameScene extends Phaser.Scene {
       this.sakura = null;
     }
 
-    // Calculate winnings
-    const winningsResult = this.budgetManager.addWinnings(this.score);
+    // Calculate winnings - ONLY add to balance if player cashed out
+    // If game over without cash out, player loses the bet and gets nothing
+    let winningsResult;
+    if (isCashOut) {
+      // Player cashed out - add score to balance
+      winningsResult = this.budgetManager.addWinnings(this.score);
+    } else {
+      // Game over - player loses bet, no winnings added
+      winningsResult = {
+        winnings: 0,
+        newBalance: this.budgetManager.getBalance(),
+        balanceMax: this.budgetManager.getBalanceMax(),
+        isNewRecord: false
+      };
+    }
     const canContinue = this.budgetManager.canContinue();
 
     // Mono no aware - bittersweet ending
@@ -988,7 +1008,8 @@ export default class GameScene extends Phaser.Scene {
           balance: winningsResult.newBalance,
           balanceMax: winningsResult.balanceMax,
           username: username,
-          cycleEnded: true
+          cycleEnded: true,
+          isCashOut: isCashOut
         });
       } else {
         // Balance >= 100 : Retour à BettingScene

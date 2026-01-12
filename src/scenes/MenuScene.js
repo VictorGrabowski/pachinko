@@ -162,7 +162,7 @@ export default class MenuScene extends Phaser.Scene {
     });
 
     settingsButton.on("pointerout", () => {
-      settingsButton.setFillStyle(0x555555);
+      settingsButton.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.3);
       this.tweens.add({
         targets: settingsButton,
         scaleX: 1,
@@ -187,7 +187,7 @@ export default class MenuScene extends Phaser.Scene {
     });
 
     scoreboardButton.on("pointerout", () => {
-      scoreboardButton.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY);
+      scoreboardButton.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.3);
       this.tweens.add({
         targets: scoreboardButton,
         scaleX: 1,
