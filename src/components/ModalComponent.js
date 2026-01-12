@@ -22,6 +22,18 @@ export default class ModalComponent {
   }
 
   /**
+   * Helper function to draw a rounded rectangle
+   */
+  drawRoundedRect(graphics, x, y, width, height, radius, fillColor, fillAlpha = 1, strokeColor = null, strokeWidth = 0, strokeAlpha = 1) {
+    graphics.fillStyle(fillColor, fillAlpha);
+    graphics.fillRoundedRect(x - width / 2, y - height / 2, width, height, radius);
+    if (strokeColor !== null && strokeWidth > 0) {
+      graphics.lineStyle(strokeWidth, strokeColor, strokeAlpha);
+      graphics.strokeRoundedRect(x - width / 2, y - height / 2, width, height, radius);
+    }
+  }
+
+  /**
    * Show the modal with feature configuration
    * @param {Object} feature - Feature definition with parameters
    * @param {Object} currentValues - Current parameter values
@@ -42,51 +54,50 @@ export default class ModalComponent {
 
     // Background dimmer
     const dimmer = this.scene.add.rectangle(
-      400, 500, 800, 1000, 0x000000, 0.8
+      400, 500, 800, 1000, 0x000000, 0.75
     );
     dimmer.setInteractive();
     this.container.add(dimmer);
 
     // Calculate modal height based on parameters
-    const modalWidth = 600;
+    const modalWidth = 520;
     const numParams = feature.parameters ? feature.parameters.length : 0;
-    // Base: title(80) + desc(60) + buttons(100) = 240, each param adds 70
-    const baseHeight = 240;
-    const paramHeight = numParams * 70;
-    const modalHeight = Math.min(800, Math.max(400, baseHeight + paramHeight));
+    // Base: title(60) + desc(50) + buttons(80) = 190, each param adds 65
+    const baseHeight = 190;
+    const paramHeight = numParams * 65;
+    const modalHeight = Math.min(700, Math.max(320, baseHeight + paramHeight));
     const modalCenterY = 500;
     const modalTop = modalCenterY - modalHeight / 2;
     const modalBottom = modalCenterY + modalHeight / 2;
+    const modalRadius = 20;
     
-    // Modal background
-    const modalBg = this.scene.add.rectangle(
-      400, modalCenterY, modalWidth, modalHeight,
-      DESIGN_CONSTANTS.COLORS.BACKGROUND
-    );
-    modalBg.setStrokeStyle(3, DESIGN_CONSTANTS.COLORS.GOLD);
-    this.container.add(modalBg);
+    // Modal background with rounded corners
+    const modalBgGraphics = this.scene.add.graphics();
+    this.drawRoundedRect(modalBgGraphics, 400, modalCenterY, modalWidth, modalHeight, modalRadius, DESIGN_CONSTANTS.COLORS.BACKGROUND, 0.98, DESIGN_CONSTANTS.COLORS.GOLD, 2, 0.5);
+    this.container.add(modalBgGraphics);
 
-    // Title
-    const title = this.scene.add.text(400, modalTop + 40, feature.name, {
-      fontSize: "32px",
+    // Title - cleaner
+    const title = this.scene.add.text(400, modalTop + 35, feature.name, {
+      fontSize: "24px",
       fontFamily: "serif",
-      color: "#ffd700",
+      color: "#ffffff",
+      fontStyle: "bold",
       align: "center"
     }).setOrigin(0.5);
     this.container.add(title);
 
-    // Description
-    const desc = this.scene.add.text(400, modalTop + 80, feature.description, {
-      fontSize: "16px",
+    // Description - subtle
+    const desc = this.scene.add.text(400, modalTop + 65, feature.description, {
+      fontSize: "13px",
       fontFamily: "serif",
-      color: "#ffb7c5",
+      color: "#aaaaaa",
       align: "center",
-      wordWrap: { width: modalWidth - 80 }
+      wordWrap: { width: modalWidth - 60 }
     }).setOrigin(0.5);
     this.container.add(desc);
 
     // Generate parameter controls
-    let yPos = modalTop + 120;
+    let yPos = modalTop + 100;
     if (feature.parameters && feature.parameters.length > 0) {
       feature.parameters.forEach(param => {
         const control = this.createParameterControl(
@@ -96,14 +107,14 @@ export default class ModalComponent {
           modalWidth
         );
         this.parameterControls.push(control);
-        yPos += 70;
+        yPos += 65;
       });
     } else {
       // No parameters message
-      const noParams = this.scene.add.text(400, modalTop + 160, "Pas de paramètres configurables", {
-        fontSize: "18px",
+      const noParams = this.scene.add.text(400, modalTop + 140, "Pas de paramètres configurables", {
+        fontSize: "14px",
         fontFamily: "serif",
-        color: "#888888",
+        color: "#666666",
         align: "center"
       }).setOrigin(0.5);
       this.container.add(noParams);
@@ -144,65 +155,64 @@ export default class ModalComponent {
     };
 
     // Label
-    const label = this.scene.add.text(150, y, param.label, {
-      fontSize: "18px",
+    const label = this.scene.add.text(140, y, param.label, {
+      fontSize: "15px",
       fontFamily: "serif",
-      color: "#ffffff"
+      color: "#cccccc"
     });
     this.container.add(label);
 
     if (param.type === 'number') {
       // Slider control
-      const sliderWidth = 300;
-      const sliderX = 350;
+      const sliderWidth = 260;
+      const sliderX = 360;
 
-      // Slider background
-      const sliderBg = this.scene.add.rectangle(
-        sliderX, y, sliderWidth, 6,
-        0x555555
-      );
-      this.container.add(sliderBg);
+      // Slider background - rounded track
+      const sliderBgGraphics = this.scene.add.graphics();
+      sliderBgGraphics.fillStyle(0x3a3a3a, 1);
+      sliderBgGraphics.fillRoundedRect(sliderX - sliderWidth/2, y - 3, sliderWidth, 6, 3);
+      this.container.add(sliderBgGraphics);
 
-      // Slider track
+      // Slider track - rounded
       const trackWidth = ((currentValue - param.min) / (param.max - param.min)) * sliderWidth;
-      const sliderTrack = this.scene.add.rectangle(
-        sliderX - sliderWidth/2, y,
-        trackWidth, 6,
-        DESIGN_CONSTANTS.COLORS.GOLD
-      );
-      sliderTrack.setOrigin(0, 0.5);
-      this.container.add(sliderTrack);
+      const sliderTrackGraphics = this.scene.add.graphics();
+      sliderTrackGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 1);
+      sliderTrackGraphics.fillRoundedRect(sliderX - sliderWidth/2, y - 3, trackWidth, 6, 3);
+      this.container.add(sliderTrackGraphics);
 
       // Slider handle
       const handleX = sliderX - sliderWidth/2 + trackWidth;
       const sliderHandle = this.scene.add.circle(
-        handleX, y, 12,
+        handleX, y, 10,
         DESIGN_CONSTANTS.COLORS.ACCENT
       );
-      sliderHandle.setStrokeStyle(2, 0xffffff);
       sliderHandle.setInteractive({ draggable: true });
       this.container.add(sliderHandle);
 
       // Value display
-      const valueText = this.scene.add.text(sliderX + sliderWidth/2 + 30, y, currentValue.toFixed(param.step < 1 ? 1 : 0), {
-        fontSize: "20px",
+      const valueText = this.scene.add.text(sliderX + sliderWidth/2 + 25, y, currentValue.toFixed(param.step < 1 ? 1 : 0), {
+        fontSize: "16px",
         fontFamily: "serif",
-        color: "#ffd700",
+        color: "#ffffff",
         fontStyle: "bold"
       }).setOrigin(0, 0.5);
       this.container.add(valueText);
 
       // Drag handler
       sliderHandle.on('drag', (pointer, dragX, dragY) => {
+        const sliderWidth = 260;
+        const sliderX = 360;
         const minX = sliderX - sliderWidth/2;
         const maxX = sliderX + sliderWidth/2;
         const clampedX = Phaser.Math.Clamp(dragX, minX, maxX);
         
         sliderHandle.x = clampedX;
         
-        // Update track - only change width, keep origin at left
+        // Update track
         const newTrackWidth = clampedX - minX;
-        sliderTrack.width = newTrackWidth;
+        sliderTrackGraphics.clear();
+        sliderTrackGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 1);
+        sliderTrackGraphics.fillRoundedRect(minX, y - 3, newTrackWidth, 6, 3);
         
         // Calculate value
         const ratio = (clampedX - minX) / sliderWidth;
@@ -215,64 +225,75 @@ export default class ModalComponent {
 
       control.getValue = () => currentValue;
       // Store references for reset functionality
-      control.track = sliderTrack;
+      control.trackGraphics = sliderTrackGraphics;
       control.handle = sliderHandle;
       control.valueText = valueText;
+      control.sliderX = sliderX;
+      control.sliderWidth = 260;
 
     } else if (param.type === 'boolean') {
-      // Toggle control
+      // Toggle control - pill shaped
       const toggleX = 400;
-      const toggleWidth = 60;
-      const toggleHeight = 30;
+      const toggleWidth = 50;
+      const toggleHeight = 26;
 
-      // Toggle background
-      const toggleBg = this.scene.add.rectangle(
-        toggleX, y, toggleWidth, toggleHeight,
-        currentValue ? DESIGN_CONSTANTS.COLORS.GOLD : 0x555555
-      );
-      toggleBg.setStrokeStyle(2, 0xffffff);
-      toggleBg.setInteractive();
-      this.container.add(toggleBg);
+      // Toggle background - pill
+      const toggleBgGraphics = this.scene.add.graphics();
+      toggleBgGraphics.fillStyle(currentValue ? DESIGN_CONSTANTS.COLORS.GOLD : 0x444444, 1);
+      toggleBgGraphics.fillRoundedRect(toggleX - toggleWidth/2, y - toggleHeight/2, toggleWidth, toggleHeight, toggleHeight/2);
+      this.container.add(toggleBgGraphics);
 
       // Toggle handle
-      const handleX = currentValue ? toggleX + 15 : toggleX - 15;
+      const handleRadius = 10;
+      const handleX = currentValue ? toggleX + toggleWidth/2 - handleRadius - 3 : toggleX - toggleWidth/2 + handleRadius + 3;
       const toggleHandle = this.scene.add.circle(
-        handleX, y, 12, 0xffffff
+        handleX, y, handleRadius, 0xffffff
       );
       this.container.add(toggleHandle);
+      
+      // Hit area
+      const toggleHitArea = this.scene.add.rectangle(toggleX, y, toggleWidth + 10, toggleHeight + 10, 0x000000, 0);
+      toggleHitArea.setInteractive({ useHandCursor: true });
+      this.container.add(toggleHitArea);
 
       // State text
-      const stateText = this.scene.add.text(toggleX + 50, y, currentValue ? "ON" : "OFF", {
-        fontSize: "18px",
+      const stateText = this.scene.add.text(toggleX + 45, y, currentValue ? "ON" : "OFF", {
+        fontSize: "14px",
         fontFamily: "serif",
-        color: currentValue ? DESIGN_CONSTANTS.COLORS.GOLD : "#888888",
+        color: currentValue ? "#ffffff" : "#666666",
         fontStyle: "bold"
       }).setOrigin(0, 0.5);
       this.container.add(stateText);
 
       // Click handler
-      toggleBg.on('pointerdown', () => {
+      toggleHitArea.on('pointerdown', () => {
         currentValue = !currentValue;
         
         // Update visual
-        toggleBg.setFillStyle(currentValue ? DESIGN_CONSTANTS.COLORS.GOLD : 0x555555);
+        toggleBgGraphics.clear();
+        toggleBgGraphics.fillStyle(currentValue ? DESIGN_CONSTANTS.COLORS.GOLD : 0x444444, 1);
+        toggleBgGraphics.fillRoundedRect(toggleX - toggleWidth/2, y - toggleHeight/2, toggleWidth, toggleHeight, toggleHeight/2);
         
+        const newHandleX = currentValue ? toggleX + toggleWidth/2 - handleRadius - 3 : toggleX - toggleWidth/2 + handleRadius + 3;
         this.scene.tweens.add({
           targets: toggleHandle,
-          x: currentValue ? toggleX + 15 : toggleX - 15,
+          x: newHandleX,
           duration: 150,
-          ease: 'Power2'
+          ease: 'Sine.easeInOut'
         });
 
         stateText.setText(currentValue ? "ON" : "OFF");
-        stateText.setColor(currentValue ? "#ffd700" : "#888888");
+        stateText.setColor(currentValue ? "#ffffff" : "#666666");
       });
 
       control.getValue = () => currentValue;
       // Store references for reset functionality
-      control.toggleBg = toggleBg;
+      control.toggleBgGraphics = toggleBgGraphics;
       control.toggleHandle = toggleHandle;
       control.toggleX = toggleX;
+      control.toggleWidth = toggleWidth;
+      control.toggleHeight = toggleHeight;
+      control.handleRadius = handleRadius;
       control.stateText = stateText;
 
       control.getValue = () => currentValue;
@@ -288,50 +309,64 @@ export default class ModalComponent {
    */
   createButtons(modalWidth, modalBottom) {
     const buttonY = modalBottom - 35;
+    const btnHeight = 38;
+    const btnRadius = 19;
 
-    // Cancel button
-    const cancelBtn = this.scene.add.rectangle(
-      250, buttonY, 140, 50,
-      0x555555
-    );
-    cancelBtn.setStrokeStyle(2, 0xffffff);
-    cancelBtn.setInteractive({ useHandCursor: true });
-    this.container.add(cancelBtn);
+    // Cancel button - rounded pill
+    const cancelBtnWidth = 110;
+    const cancelBtnX = 240;
+    
+    const cancelBtnGraphics = this.scene.add.graphics();
+    cancelBtnGraphics.fillStyle(0x444444, 0.8);
+    cancelBtnGraphics.fillRoundedRect(cancelBtnX - cancelBtnWidth/2, buttonY - btnHeight/2, cancelBtnWidth, btnHeight, btnRadius);
+    this.container.add(cancelBtnGraphics);
+    
+    const cancelBtnHitArea = this.scene.add.rectangle(cancelBtnX, buttonY, cancelBtnWidth, btnHeight, 0x000000, 0);
+    cancelBtnHitArea.setInteractive({ useHandCursor: true });
+    this.container.add(cancelBtnHitArea);
 
-    const cancelText = this.scene.add.text(250, buttonY, "Annuler", {
-      fontSize: "20px",
+    const cancelText = this.scene.add.text(cancelBtnX, buttonY, "Annuler", {
+      fontSize: "14px",
       fontFamily: "serif",
-      color: "#ffffff"
+      color: "#cccccc"
     }).setOrigin(0.5);
     this.container.add(cancelText);
 
-    // Reset to Default button
-    const resetBtn = this.scene.add.rectangle(
-      400, buttonY, 140, 50,
-      0x4a5568
-    );
-    resetBtn.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.PRIMARY);
-    resetBtn.setInteractive({ useHandCursor: true });
-    this.container.add(resetBtn);
+    // Reset to Default button - rounded pill
+    const resetBtnWidth = 110;
+    const resetBtnX = 400;
+    
+    const resetBtnGraphics = this.scene.add.graphics();
+    resetBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.6);
+    resetBtnGraphics.fillRoundedRect(resetBtnX - resetBtnWidth/2, buttonY - btnHeight/2, resetBtnWidth, btnHeight, btnRadius);
+    this.container.add(resetBtnGraphics);
+    
+    const resetBtnHitArea = this.scene.add.rectangle(resetBtnX, buttonY, resetBtnWidth, btnHeight, 0x000000, 0);
+    resetBtnHitArea.setInteractive({ useHandCursor: true });
+    this.container.add(resetBtnHitArea);
 
-    const resetText = this.scene.add.text(400, buttonY, "Par défaut", {
-      fontSize: "18px",
+    const resetText = this.scene.add.text(resetBtnX, buttonY, "Par défaut", {
+      fontSize: "14px",
       fontFamily: "serif",
       color: "#ffffff"
     }).setOrigin(0.5);
     this.container.add(resetText);
 
-    // Save button
-    const saveBtn = this.scene.add.rectangle(
-      550, buttonY, 140, 50,
-      DESIGN_CONSTANTS.COLORS.GOLD
-    );
-    saveBtn.setStrokeStyle(2, 0xffffff);
-    saveBtn.setInteractive({ useHandCursor: true });
-    this.container.add(saveBtn);
+    // Save button - rounded pill
+    const saveBtnWidth = 110;
+    const saveBtnX = 560;
+    
+    const saveBtnGraphics = this.scene.add.graphics();
+    saveBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 1);
+    saveBtnGraphics.fillRoundedRect(saveBtnX - saveBtnWidth/2, buttonY - btnHeight/2, saveBtnWidth, btnHeight, btnRadius);
+    this.container.add(saveBtnGraphics);
+    
+    const saveBtnHitArea = this.scene.add.rectangle(saveBtnX, buttonY, saveBtnWidth, btnHeight, 0x000000, 0);
+    saveBtnHitArea.setInteractive({ useHandCursor: true });
+    this.container.add(saveBtnHitArea);
 
-    const saveText = this.scene.add.text(550, buttonY, "Enregistrer", {
-      fontSize: "20px",
+    const saveText = this.scene.add.text(saveBtnX, buttonY, "Enregistrer", {
+      fontSize: "14px",
       fontFamily: "serif",
       color: "#000000",
       fontStyle: "bold"
@@ -339,72 +374,54 @@ export default class ModalComponent {
     this.container.add(saveText);
 
     // Hover effects
-    cancelBtn.on('pointerover', () => {
-      this.scene.tweens.add({
-        targets: cancelBtn,
-        scaleX: 1.05,
-        scaleY: 1.05,
-        duration: 100
-      });
+    cancelBtnHitArea.on('pointerover', () => {
+      cancelBtnGraphics.clear();
+      cancelBtnGraphics.fillStyle(0x555555, 1);
+      cancelBtnGraphics.fillRoundedRect(cancelBtnX - cancelBtnWidth/2, buttonY - btnHeight/2, cancelBtnWidth, btnHeight, btnRadius);
+      cancelText.setColor("#ffffff");
     });
 
-    cancelBtn.on('pointerout', () => {
-      this.scene.tweens.add({
-        targets: cancelBtn,
-        scaleX: 1,
-        scaleY: 1,
-        duration: 100
-      });
+    cancelBtnHitArea.on('pointerout', () => {
+      cancelBtnGraphics.clear();
+      cancelBtnGraphics.fillStyle(0x444444, 0.8);
+      cancelBtnGraphics.fillRoundedRect(cancelBtnX - cancelBtnWidth/2, buttonY - btnHeight/2, cancelBtnWidth, btnHeight, btnRadius);
+      cancelText.setColor("#cccccc");
     });
 
-    resetBtn.on('pointerover', () => {
-      resetBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY);
-      this.scene.tweens.add({
-        targets: [resetBtn, resetText],
-        scaleX: 1.05,
-        scaleY: 1.05,
-        duration: 100
-      });
+    resetBtnHitArea.on('pointerover', () => {
+      resetBtnGraphics.clear();
+      resetBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 1);
+      resetBtnGraphics.fillRoundedRect(resetBtnX - resetBtnWidth/2, buttonY - btnHeight/2, resetBtnWidth, btnHeight, btnRadius);
     });
 
-    resetBtn.on('pointerout', () => {
-      resetBtn.setFillStyle(0x4a5568);
-      this.scene.tweens.add({
-        targets: [resetBtn, resetText],
-        scaleX: 1,
-        scaleY: 1,
-        duration: 100
-      });
+    resetBtnHitArea.on('pointerout', () => {
+      resetBtnGraphics.clear();
+      resetBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.6);
+      resetBtnGraphics.fillRoundedRect(resetBtnX - resetBtnWidth/2, buttonY - btnHeight/2, resetBtnWidth, btnHeight, btnRadius);
     });
 
-    saveBtn.on('pointerover', () => {
-      this.scene.tweens.add({
-        targets: saveBtn,
-        scaleX: 1.05,
-        scaleY: 1.05,
-        duration: 100
-      });
+    saveBtnHitArea.on('pointerover', () => {
+      saveBtnGraphics.clear();
+      saveBtnGraphics.fillStyle(0xffe066, 1);
+      saveBtnGraphics.fillRoundedRect(saveBtnX - saveBtnWidth/2, buttonY - btnHeight/2, saveBtnWidth, btnHeight, btnRadius);
     });
 
-    saveBtn.on('pointerout', () => {
-      this.scene.tweens.add({
-        targets: saveBtn,
-        scaleX: 1,
-        scaleY: 1,
-        duration: 100
-      });
+    saveBtnHitArea.on('pointerout', () => {
+      saveBtnGraphics.clear();
+      saveBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 1);
+      saveBtnGraphics.fillRoundedRect(saveBtnX - saveBtnWidth/2, buttonY - btnHeight/2, saveBtnWidth, btnHeight, btnRadius);
     });
 
     // Click handlers
-    cancelBtn.on('pointerdown', () => {
+    cancelBtnHitArea.on('pointerdown', () => {
       this.hide();
     });
 
-    resetBtn.on('pointerdown', () => {
+    resetBtnHitArea.on('pointerdown', () => {
       this.resetToDefaults();
     });
 
-    saveBtn.on('pointerdown', () => {
+    saveBtnHitArea.on('pointerdown', () => {
       this.save();
     });
   }
@@ -443,28 +460,27 @@ export default class ModalComponent {
         control.getValue = () => defaultValue;
 
         // Find and update the visual elements
-        const sliderTrack = control.track;
+        const trackGraphics = control.trackGraphics;
         const sliderHandle = control.handle;
         const valueText = control.valueText;
+        const sliderX = control.sliderX;
+        const sliderWidth = control.sliderWidth;
 
-        if (sliderTrack && sliderHandle && valueText) {
-          const sliderWidth = 300;
+        if (trackGraphics && sliderHandle && valueText) {
           const trackWidth = ((defaultValue - param.min) / (param.max - param.min)) * sliderWidth;
+          const y = sliderHandle.y;
           
-          // Animate to default position
-          this.scene.tweens.add({
-            targets: sliderTrack,
-            width: trackWidth,
-            duration: 300,
-            ease: 'Power2'
-          });
+          // Update track graphics
+          trackGraphics.clear();
+          trackGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 1);
+          trackGraphics.fillRoundedRect(sliderX - sliderWidth/2, y - 3, trackWidth, 6, 3);
 
-          const handleX = 350 - sliderWidth/2 + trackWidth;
+          const handleX = sliderX - sliderWidth/2 + trackWidth;
           this.scene.tweens.add({
             targets: sliderHandle,
             x: handleX,
-            duration: 300,
-            ease: 'Power2'
+            duration: 200,
+            ease: 'Sine.easeOut'
           });
 
           valueText.setText(defaultValue.toFixed(param.step < 1 ? 1 : 0));
@@ -473,30 +489,36 @@ export default class ModalComponent {
         // Update toggle
         control.getValue = () => defaultValue;
         
-        const toggleBg = control.toggleBg;
+        const toggleBgGraphics = control.toggleBgGraphics;
         const toggleHandle = control.toggleHandle;
         const toggleX = control.toggleX;
+        const toggleWidth = control.toggleWidth;
+        const toggleHeight = control.toggleHeight;
+        const handleRadius = control.handleRadius;
         const stateText = control.stateText;
+        const y = toggleHandle.y;
         
-        if (toggleBg && toggleHandle && stateText) {
-          toggleBg.setFillStyle(defaultValue ? DESIGN_CONSTANTS.COLORS.GOLD : 0x555555);
+        if (toggleBgGraphics && toggleHandle && stateText) {
+          toggleBgGraphics.clear();
+          toggleBgGraphics.fillStyle(defaultValue ? DESIGN_CONSTANTS.COLORS.GOLD : 0x444444, 1);
+          toggleBgGraphics.fillRoundedRect(toggleX - toggleWidth/2, y - toggleHeight/2, toggleWidth, toggleHeight, toggleHeight/2);
           
-          const targetX = defaultValue ? toggleX + 15 : toggleX - 15;
+          const targetX = defaultValue ? toggleX + toggleWidth/2 - handleRadius - 3 : toggleX - toggleWidth/2 + handleRadius + 3;
           this.scene.tweens.add({
             targets: toggleHandle,
             x: targetX,
-            duration: 200,
-            ease: 'Power2'
+            duration: 150,
+            ease: 'Sine.easeInOut'
           });
 
           stateText.setText(defaultValue ? "ON" : "OFF");
-          stateText.setColor(defaultValue ? "#ffd700" : "#888888");
+          stateText.setColor(defaultValue ? "#ffffff" : "#666666");
         }
       }
     });
 
-    // Visual feedback
-    this.scene.cameras.main.flash(200, 100, 200, 100, false);
+    // Visual feedback - subtle flash
+    this.scene.cameras.main.flash(150, 80, 160, 80, false);
   }
 
   /**

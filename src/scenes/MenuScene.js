@@ -265,82 +265,74 @@ export default class MenuScene extends Phaser.Scene {
   /**
    * Create palette selector
    */
-  createPaletteSelector(container, leftMargin, yPos) {
-    // Titre
-    const title = this.add.text(leftMargin, yPos, this.languageManager.getText('menu.paletteTitle'), {
-      fontSize: "20px",
-      color: "#f4a460",
-      fontFamily: "serif",
-      fontStyle: "bold"
+  createPaletteSelector(container, leftMargin, yPos, panelWidth) {
+    // Titre - smaller, more subtle
+    const title = this.add.text(leftMargin + 20, yPos, this.languageManager.getText('menu.paletteTitle'), {
+      fontSize: "16px",
+      color: "#aaaaaa",
+      fontFamily: "serif"
     });
     container.add(title);
 
-    // Boutons de palette
+    // Boutons de palette - pill shaped
     const paletteKeys = Object.keys(COLOR_PALETTES);
     const activePalette = getActivePalette();
-    const buttonWidth = 100;
+    const buttonWidth = 90;
+    const buttonHeight = 36;
     const spacing = 8;
 
     paletteKeys.forEach((key, index) => {
       const palette = COLOR_PALETTES[key];
-      const x = leftMargin + index * (buttonWidth + spacing) + buttonWidth / 2;
-      const y = yPos + 40;
+      const x = leftMargin + 20 + index * (buttonWidth + spacing) + buttonWidth / 2;
+      const y = yPos + 38;
       const isActive = key === activePalette;
 
-      // Bouton
-      const button = this.add
-        .rectangle(
-          x,
-          y,
-          buttonWidth,
-          45,
-          palette.colors.PRIMARY,
-          isActive ? 1 : 0.5
-        )
-        .setInteractive({ useHandCursor: true });
-
+      // Bouton - rounded pill
+      const buttonGraphics = this.add.graphics();
+      buttonGraphics.fillStyle(palette.colors.PRIMARY, isActive ? 1 : 0.4);
+      buttonGraphics.fillRoundedRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight, 18);
       if (isActive) {
-        button.setStrokeStyle(3, palette.colors.GOLD);
+        buttonGraphics.lineStyle(2, palette.colors.GOLD, 0.8);
+        buttonGraphics.strokeRoundedRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight, 18);
       }
-
-      container.add(button);
+      container.add(buttonGraphics);
+      
+      // Hit area
+      const hitArea = this.add.rectangle(x, y, buttonWidth, buttonHeight, 0x000000, 0);
+      hitArea.setInteractive({ useHandCursor: true });
+      container.add(hitArea);
 
       // Label
       const label = this.add
         .text(x, y, palette.name, {
-          fontSize: "13px",
-          color: "#FFFFFF",
+          fontSize: "12px",
+          color: isActive ? "#ffffff" : "#cccccc",
           fontFamily: "serif",
           align: "center",
         })
         .setOrigin(0.5);
-
       container.add(label);
 
       // Interactions
-      button.on("pointerover", () => {
+      hitArea.on("pointerover", () => {
         if (key !== getActivePalette()) {
-          button.setAlpha(0.8);
-          this.tweens.add({
-            targets: button,
-            scaleX: 1.05,
-            scaleY: 1.05,
-            duration: 150,
-          });
+          buttonGraphics.clear();
+          buttonGraphics.fillStyle(palette.colors.PRIMARY, 0.7);
+          buttonGraphics.fillRoundedRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight, 18);
+          label.setColor("#ffffff");
         }
       });
 
-      button.on("pointerout", () => {
-        button.setAlpha(key === getActivePalette() ? 1 : 0.5);
-        this.tweens.add({
-          targets: button,
-          scaleX: 1,
-          scaleY: 1,
-          duration: 150,
-        });
+      hitArea.on("pointerout", () => {
+        if (key !== getActivePalette()) {
+          buttonGraphics.clear();
+          buttonGraphics.fillStyle(palette.colors.PRIMARY, 0.4);
+          buttonGraphics.fillRoundedRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight, 18);
+          label.setColor("#cccccc");
+        }
       });
 
-      button.on("pointerdown", () => {
+      hitArea.on("pointerdown", () => {
         setActivePalette(key);
         // Destroy overlay immediately then restart scene
         if (this.settingsOverlay) {
@@ -350,6 +342,18 @@ export default class MenuScene extends Phaser.Scene {
         this.scene.restart();
       });
     });
+  }
+
+  /**
+   * Helper function to draw a rounded rectangle
+   */
+  drawRoundedRect(graphics, x, y, width, height, radius, fillColor, fillAlpha = 1, strokeColor = null, strokeWidth = 0, strokeAlpha = 1) {
+    graphics.fillStyle(fillColor, fillAlpha);
+    graphics.fillRoundedRect(x - width / 2, y - height / 2, width, height, radius);
+    if (strokeColor !== null && strokeWidth > 0) {
+      graphics.lineStyle(strokeWidth, strokeColor, strokeAlpha);
+      graphics.strokeRoundedRect(x - width / 2, y - height / 2, width, height, radius);
+    }
   }
 
   /**
@@ -364,8 +368,8 @@ export default class MenuScene extends Phaser.Scene {
     this.settingsOverlay = this.add.container(0, 0);
     this.settingsOverlay.setDepth(999);
 
-    // Background dimmer
-    const dimmer = this.add.rectangle(400, 500, 800, 1000, 0x000000, 0.85);
+    // Background dimmer with subtle gradient feel
+    const dimmer = this.add.rectangle(400, 500, 800, 1000, 0x000000, 0.8);
     dimmer.setInteractive();
     this.settingsOverlay.add(dimmer);
 
@@ -374,94 +378,89 @@ export default class MenuScene extends Phaser.Scene {
     const numCategories = Object.keys(featuresByCategory).length;
     const numFeatures = Object.values(featuresByCategory).reduce((sum, features) => sum + features.length, 0);
     
-    // Base height: title(80) + lang(60) + palette(90) + reset(80) + closeBtn(70) = 380
-    // Categories: header(50) * numCategories + features(80) * numFeatures + spacing(10) * (numCategories-1)
-    const baseHeight = 380;
-    const contentHeight = baseHeight + (50 * numCategories) + (80 * numFeatures) + (10 * Math.max(0, numCategories - 1));
-    const panelHeight = Math.min(900, Math.max(600, contentHeight));
+    // Base height: title(70) + lang(55) + palette(85) + reset(65) + closeBtn(60) = 335
+    const baseHeight = 335;
+    const contentHeight = baseHeight + (45 * numCategories) + (70 * numFeatures) + (8 * Math.max(0, numCategories - 1));
+    const panelHeight = Math.min(880, Math.max(580, contentHeight));
     
-    // Settings panel background
-    const panelWidth = 700;
+    // Settings panel with rounded corners
+    const panelWidth = 680;
     const panelCenterY = 500;
     const panelTop = panelCenterY - panelHeight / 2;
     const panelBottom = panelCenterY + panelHeight / 2;
+    const panelRadius = 24;
     
-    const panelBg = this.add.rectangle(
-      400, panelCenterY, panelWidth, panelHeight,
-      DESIGN_CONSTANTS.COLORS.BACKGROUND
-    );
-    panelBg.setStrokeStyle(4, DESIGN_CONSTANTS.COLORS.GOLD);
-    this.settingsOverlay.add(panelBg);
+    // Main panel background with rounded corners
+    const panelGraphics = this.add.graphics();
+    this.drawRoundedRect(panelGraphics, 400, panelCenterY, panelWidth, panelHeight, panelRadius, DESIGN_CONSTANTS.COLORS.BACKGROUND, 0.97, DESIGN_CONSTANTS.COLORS.GOLD, 2, 0.6);
+    this.settingsOverlay.add(panelGraphics);
     
-    // Add subtle inner shadow effect
-    const shadowTop = this.add.rectangle(400, panelTop + 2, panelWidth - 8, 4, 0x000000, 0.3);
-    this.settingsOverlay.add(shadowTop);
+    // Subtle inner glow effect
+    const innerGlow = this.add.graphics();
+    innerGlow.fillStyle(0xffffff, 0.03);
+    innerGlow.fillRoundedRect(400 - panelWidth / 2 + 4, panelTop + 4, panelWidth - 8, 60, { tl: panelRadius - 2, tr: panelRadius - 2, bl: 0, br: 0 });
+    this.settingsOverlay.add(innerGlow);
 
-    // Title
-    const title = this.add.text(400, panelTop + 50, "CONFIGURATION", {
-      fontSize: "42px",
+    // Title - cleaner, smaller
+    const title = this.add.text(400, panelTop + 40, "Configuration", {
+      fontSize: "32px",
       fontFamily: "serif",
-      color: DESIGN_CONSTANTS.COLORS.GOLD,
+      color: "#ffffff",
       fontStyle: "bold",
-      letterSpacing: 6
+      letterSpacing: 2
     }).setOrigin(0.5);
     this.settingsOverlay.add(title);
 
-    // Decorative lines (double)
-    const lineLeft = this.add.rectangle(300, panelTop + 78, 80, 2, DESIGN_CONSTANTS.COLORS.GOLD, 0.6);
-    const lineRight = this.add.rectangle(500, panelTop + 78, 80, 2, DESIGN_CONSTANTS.COLORS.GOLD, 0.6);
-    this.settingsOverlay.add(lineLeft);
-    this.settingsOverlay.add(lineRight);
+    // Subtle decorative line
+    const lineGraphics = this.add.graphics();
+    lineGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 0.4);
+    lineGraphics.fillRoundedRect(300, panelTop + 65, 200, 2, 1);
+    this.settingsOverlay.add(lineGraphics);
 
-    // Description
-    const desc = this.add.text(400, panelTop + 105, "Configurez les fonctionnalités du jeu", {
-      fontSize: "16px",
-      fontFamily: "serif",
-      color: DESIGN_CONSTANTS.COLORS.SAKURA,
-      alpha: 0.9
-    }).setOrigin(0.5);
-    this.settingsOverlay.add(desc);
-
-    let yPos = panelTop + 145;
+    let yPos = panelTop + 90;
 
     // Username section
-    this.createUsernameSection(this.settingsOverlay, yPos);
-    yPos += 70;
+    this.createUsernameSection(this.settingsOverlay, yPos, panelWidth);
+    yPos += 55;
 
     // Language selector
-    this.createLanguageSelector(this.settingsOverlay, yPos);
-    yPos += 70;
+    this.createLanguageSelector(this.settingsOverlay, yPos, panelWidth);
+    yPos += 55;
 
     // Palette selector
-    this.createPaletteSelector(this.settingsOverlay, 120, yPos);
-    yPos += 95;
+    this.createPaletteSelector(this.settingsOverlay, 100, yPos, panelWidth);
+    yPos += 80;
     
-    // Separator line
-    const separator1 = this.add.rectangle(400, yPos, panelWidth - 100, 1, DESIGN_CONSTANTS.COLORS.GOLD, 0.2);
-    this.settingsOverlay.add(separator1);
-    yPos += 20;
+    // Separator - subtle rounded line
+    const sep1Graphics = this.add.graphics();
+    sep1Graphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 0.15);
+    sep1Graphics.fillRoundedRect(400 - (panelWidth - 120) / 2, yPos, panelWidth - 120, 2, 1);
+    this.settingsOverlay.add(sep1Graphics);
+    yPos += 16;
 
     // Reset scoreboard button
-    this.createResetScoreboardButton(this.settingsOverlay, yPos);
-    yPos += 70;
+    this.createResetScoreboardButton(this.settingsOverlay, yPos, panelWidth);
+    yPos += 55;
     
-    // Separator line
-    const separator2 = this.add.rectangle(400, yPos, panelWidth - 100, 1, DESIGN_CONSTANTS.COLORS.GOLD, 0.2);
-    this.settingsOverlay.add(separator2);
-    yPos += 25;
+    // Separator - subtle rounded line
+    const sep2Graphics = this.add.graphics();
+    sep2Graphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 0.15);
+    sep2Graphics.fillRoundedRect(400 - (panelWidth - 120) / 2, yPos, panelWidth - 120, 2, 1);
+    this.settingsOverlay.add(sep2Graphics);
+    yPos += 18;
 
     // Store start position for features section
     const featuresStartY = yPos;
-    const maxFeaturesHeight = panelBottom - yPos - 80; // Leave space for close button
+    const maxFeaturesHeight = panelBottom - yPos - 70; // Leave space for close button
     
     // Create scrollable container for features
     const featuresContainer = this.add.container(0, 0);
     this.settingsOverlay.add(featuresContainer);
     
-    // Create mask for features container
+    // Create mask for features container with rounded corners
     const maskShape = this.make.graphics();
     maskShape.fillStyle(0xffffff);
-    maskShape.fillRect(50, featuresStartY, 700, maxFeaturesHeight);
+    maskShape.fillRoundedRect(70, featuresStartY, 660, maxFeaturesHeight, 12);
     const mask = maskShape.createGeometryMask();
     featuresContainer.setMask(mask);
     
@@ -469,32 +468,33 @@ export default class MenuScene extends Phaser.Scene {
 
     // Render features by category (already retrieved above)
     Object.keys(featuresByCategory).forEach(category => {
-      // Category header with background
+      // Category header - minimal, clean design
       const categoryLabel = CATEGORY_LABELS[category] || category;
       
-      // Background for category
-      const categoryBg = this.add.rectangle(400, featuresStartY + featuresYPos + 5, panelWidth - 60, 35, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.15);
-      categoryBg.setStrokeStyle(1, DESIGN_CONSTANTS.COLORS.GOLD, 0.3);
-      featuresContainer.add(categoryBg);
+      // Subtle rounded background for category
+      const categoryBgGraphics = this.add.graphics();
+      categoryBgGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.12);
+      categoryBgGraphics.fillRoundedRect(400 - (panelWidth - 80) / 2, featuresStartY + featuresYPos - 12, panelWidth - 80, 30, 8);
+      featuresContainer.add(categoryBgGraphics);
       
-      const categoryHeader = this.add.text(400, featuresStartY + featuresYPos + 5, categoryLabel, {
-        fontSize: "22px",
+      const categoryHeader = this.add.text(400, featuresStartY + featuresYPos + 3, categoryLabel, {
+        fontSize: "16px",
         fontFamily: "serif",
-        color: DESIGN_CONSTANTS.COLORS.GOLD,
+        color: DESIGN_CONSTANTS.COLORS.SAKURA,
         fontStyle: "bold",
-        letterSpacing: 3
+        letterSpacing: 2
       }).setOrigin(0.5);
       featuresContainer.add(categoryHeader);
       
-      featuresYPos += 55;
+      featuresYPos += 40;
 
       // Features in this category
       featuresByCategory[category].forEach(feature => {
         const featureRow = this.createFeatureRow(feature, featuresStartY + featuresYPos, panelWidth, featuresContainer);
-        featuresYPos += 85;
+        featuresYPos += 70;
       });
 
-      featuresYPos += 15; // Extra space between categories
+      featuresYPos += 10; // Extra space between categories
     });
     
     // Total height of features content
@@ -506,28 +506,18 @@ export default class MenuScene extends Phaser.Scene {
       let scrollY = 0;
       const maxScroll = totalFeaturesHeight - maxFeaturesHeight;
       
-      // Scroll indicators
-      const scrollUpIndicator = this.add.text(750, featuresStartY + 10, "▲", {
-        fontSize: "20px",
-        color: DESIGN_CONSTANTS.COLORS.GOLD,
-        alpha: 0
-      }).setOrigin(0.5);
-      this.settingsOverlay.add(scrollUpIndicator);
+      // Scroll track - subtle rounded bar
+      const scrollTrackGraphics = this.add.graphics();
+      scrollTrackGraphics.fillStyle(0xffffff, 0.1);
+      scrollTrackGraphics.fillRoundedRect(735, featuresStartY + 5, 6, maxFeaturesHeight - 10, 3);
+      this.settingsOverlay.add(scrollTrackGraphics);
       
-      const scrollDownIndicator = this.add.text(750, featuresStartY + maxFeaturesHeight - 10, "▼", {
-        fontSize: "20px",
-        color: DESIGN_CONSTANTS.COLORS.GOLD
-      }).setOrigin(0.5);
-      this.settingsOverlay.add(scrollDownIndicator);
-      
-      // Add pulsing animation to down indicator
-      this.tweens.add({
-        targets: scrollDownIndicator,
-        alpha: 0.3,
-        duration: 800,
-        yoyo: true,
-        repeat: -1
-      });
+      // Scroll thumb
+      const thumbHeight = Math.max(30, (maxFeaturesHeight / totalFeaturesHeight) * (maxFeaturesHeight - 10));
+      const scrollThumb = this.add.graphics();
+      scrollThumb.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 0.6);
+      scrollThumb.fillRoundedRect(735, featuresStartY + 5, 6, thumbHeight, 3);
+      this.settingsOverlay.add(scrollThumb);
       
       // Mouse wheel scroll
       this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
@@ -538,54 +528,54 @@ export default class MenuScene extends Phaser.Scene {
         // Move features container
         featuresContainer.y = -scrollY;
         
-        // Update indicators
-        scrollUpIndicator.setAlpha(scrollY > 0 ? 1 : 0);
-        scrollDownIndicator.setAlpha(scrollY < maxScroll ? 1 : 0);
+        // Update scroll thumb position
+        const thumbY = featuresStartY + 5 + (scrollY / maxScroll) * (maxFeaturesHeight - 10 - thumbHeight);
+        scrollThumb.clear();
+        scrollThumb.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 0.6);
+        scrollThumb.fillRoundedRect(735, thumbY, 6, thumbHeight, 3);
       });
     }
 
-    // Close button - positioned at bottom of panel with better styling
-    const closeBtnY = panelBottom - 40;
-    const closeBtn = this.add.rectangle(400, closeBtnY, 240, 55, DESIGN_CONSTANTS.COLORS.ACCENT);
-    closeBtn.setStrokeStyle(3, DESIGN_CONSTANTS.COLORS.GOLD, 0.8);
-    closeBtn.setInteractive({ useHandCursor: true });
-    this.settingsOverlay.add(closeBtn);
+    // Close button - rounded pill shape
+    const closeBtnY = panelBottom - 38;
+    const closeBtnWidth = 180;
+    const closeBtnHeight = 44;
+    
+    const closeBtnGraphics = this.add.graphics();
+    closeBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.ACCENT, 1);
+    closeBtnGraphics.fillRoundedRect(400 - closeBtnWidth / 2, closeBtnY - closeBtnHeight / 2, closeBtnWidth, closeBtnHeight, 22);
+    this.settingsOverlay.add(closeBtnGraphics);
+    
+    // Invisible hit area for the button
+    const closeBtnHitArea = this.add.rectangle(400, closeBtnY, closeBtnWidth, closeBtnHeight, 0x000000, 0);
+    closeBtnHitArea.setInteractive({ useHandCursor: true });
+    this.settingsOverlay.add(closeBtnHitArea);
 
-    const closeText = this.add.text(400, closeBtnY, "FERMER", {
-      fontSize: "26px",
+    const closeText = this.add.text(400, closeBtnY, "Fermer", {
+      fontSize: "20px",
       fontFamily: "serif",
       color: "#ffffff",
       fontStyle: "bold",
-      letterSpacing: 2
+      letterSpacing: 1
     }).setOrigin(0.5);
     this.settingsOverlay.add(closeText);
 
     // Close button interactions
-    closeBtn.on('pointerover', () => {
-      closeBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
+    closeBtnHitArea.on('pointerover', () => {
+      closeBtnGraphics.clear();
+      closeBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 1);
+      closeBtnGraphics.fillRoundedRect(400 - closeBtnWidth / 2, closeBtnY - closeBtnHeight / 2, closeBtnWidth, closeBtnHeight, 22);
       closeText.setColor("#000000");
-      this.tweens.add({
-        targets: [closeBtn, closeText],
-        scaleX: 1.08,
-        scaleY: 1.08,
-        duration: 150,
-        ease: 'Back.easeOut'
-      });
     });
 
-    closeBtn.on('pointerout', () => {
-      closeBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.ACCENT);
+    closeBtnHitArea.on('pointerout', () => {
+      closeBtnGraphics.clear();
+      closeBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.ACCENT, 1);
+      closeBtnGraphics.fillRoundedRect(400 - closeBtnWidth / 2, closeBtnY - closeBtnHeight / 2, closeBtnWidth, closeBtnHeight, 22);
       closeText.setColor("#ffffff");
-      this.tweens.add({
-        targets: [closeBtn, closeText],
-        scaleX: 1,
-        scaleY: 1,
-        duration: 150,
-        ease: 'Back.easeIn'
-      });
     });
 
-    closeBtn.on('pointerdown', () => {
+    closeBtnHitArea.on('pointerdown', () => {
       this.closeSettingsOverlay();
     });
 
@@ -609,138 +599,133 @@ export default class MenuScene extends Phaser.Scene {
   createFeatureRow(feature, y, panelWidth, targetContainer = null) {
     const container = targetContainer || this.settingsOverlay;
     const panelCenterX = 400;
-    const leftMargin = panelCenterX - panelWidth / 2 + 70;
+    const leftMargin = panelCenterX - panelWidth / 2 + 60;
 
-    // Checkbox/toggle
-    const checkboxSize = 24;
-    const checkbox = this.add.circle(
-      leftMargin, y,
-      checkboxSize / 2,
-      feature.enabled ? DESIGN_CONSTANTS.COLORS.GOLD : 0x333333
-    );
-    checkbox.setStrokeStyle(3, feature.enabled ? DESIGN_CONSTANTS.COLORS.GOLD : 0x666666);
-    checkbox.setInteractive({ useHandCursor: true });
-    container.add(checkbox);
+    // Pill-shaped toggle switch
+    const toggleWidth = 44;
+    const toggleHeight = 24;
+    const toggleX = leftMargin;
+    
+    // Toggle background - pill shape
+    const toggleBg = this.add.graphics();
+    toggleBg.fillStyle(feature.enabled ? DESIGN_CONSTANTS.COLORS.GOLD : 0x444444, 1);
+    toggleBg.fillRoundedRect(toggleX - toggleWidth / 2, y - toggleHeight / 2, toggleWidth, toggleHeight, toggleHeight / 2);
+    container.add(toggleBg);
+    
+    // Toggle handle (circle)
+    const handleRadius = 9;
+    const handleX = feature.enabled ? toggleX + toggleWidth / 2 - handleRadius - 3 : toggleX - toggleWidth / 2 + handleRadius + 3;
+    const toggleHandle = this.add.circle(handleX, y, handleRadius, 0xffffff);
+    container.add(toggleHandle);
+    
+    // Hit area for toggle
+    const toggleHitArea = this.add.rectangle(toggleX, y, toggleWidth + 10, toggleHeight + 10, 0x000000, 0);
+    toggleHitArea.setInteractive({ useHandCursor: true });
+    container.add(toggleHitArea);
 
-    // Inner circle for enabled state
-    let checkmark = null;
-    if (feature.enabled) {
-      checkmark = this.add.circle(leftMargin, y, 7, DESIGN_CONSTANTS.COLORS.PRIMARY);
-      container.add(checkmark);
-    }
-
-    // Feature name
-    const nameText = this.add.text(leftMargin + 45, y - 10, feature.name, {
-      fontSize: "21px",
+    // Feature name - cleaner typography
+    const nameText = this.add.text(leftMargin + 40, y - 8, feature.name, {
+      fontSize: "17px",
       fontFamily: "serif",
       color: feature.enabled ? "#ffffff" : "#888888",
-      fontStyle: feature.enabled ? "bold" : "normal",
-      letterSpacing: 0.5
+      fontStyle: feature.enabled ? "bold" : "normal"
     });
     container.add(nameText);
 
-    // Feature description
-    const descText = this.add.text(leftMargin + 45, y + 13, feature.description, {
-      fontSize: "14px",
+    // Feature description - subtle
+    const descText = this.add.text(leftMargin + 40, y + 11, feature.description, {
+      fontSize: "12px",
       fontFamily: "serif",
-      color: feature.enabled ? "#bbbbbb" : "#777777",
-      wordWrap: { width: 350 }
+      color: feature.enabled ? "#aaaaaa" : "#666666",
+      wordWrap: { width: 320 }
     });
     container.add(descText);
 
-    // Configure button (only if feature has parameters)
-    let configBtn = null;
+    // Configure button (only if feature has parameters) - rounded pill
+    let configBtnGraphics = null;
+    let configBtnHitArea = null;
     let configText = null;
     if (feature.parameters && feature.parameters.length > 0) {
-      const configBtnX = panelCenterX + panelWidth / 2 - 80;
-      configBtn = this.add.rectangle(
-        configBtnX, y,
-        130, 45,
-        feature.enabled ? DESIGN_CONSTANTS.COLORS.PRIMARY : 0x444444
-      );
-      configBtn.setStrokeStyle(2, feature.enabled ? DESIGN_CONSTANTS.COLORS.GOLD : 0x666666);
-      configBtn.setInteractive({ useHandCursor: true }); // Always make interactive if has parameters
-      container.add(configBtn);
+      const configBtnX = panelCenterX + panelWidth / 2 - 85;
+      const configBtnWidth = 100;
+      const configBtnHeight = 32;
+      
+      configBtnGraphics = this.add.graphics();
+      configBtnGraphics.fillStyle(feature.enabled ? DESIGN_CONSTANTS.COLORS.PRIMARY : 0x3a3a3a, feature.enabled ? 0.8 : 0.5);
+      configBtnGraphics.fillRoundedRect(configBtnX - configBtnWidth / 2, y - configBtnHeight / 2, configBtnWidth, configBtnHeight, 16);
+      container.add(configBtnGraphics);
+      
+      configBtnHitArea = this.add.rectangle(configBtnX, y, configBtnWidth, configBtnHeight, 0x000000, 0);
+      configBtnHitArea.setInteractive({ useHandCursor: true });
+      container.add(configBtnHitArea);
 
       configText = this.add.text(configBtnX, y, "Configurer", {
-        fontSize: "17px",
+        fontSize: "13px",
         fontFamily: "serif",
-        color: feature.enabled ? "#ffffff" : "#666666",
-        letterSpacing: 0.5
+        color: feature.enabled ? "#ffffff" : "#666666"
       }).setOrigin(0.5);
       container.add(configText);
 
-      // Configure button click - always attach if has parameters
-      configBtn.on('pointerover', () => {
+      // Configure button hover effects
+      configBtnHitArea.on('pointerover', () => {
         if (feature.enabled) {
-          configBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
+          configBtnGraphics.clear();
+          configBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 1);
+          configBtnGraphics.fillRoundedRect(configBtnX - configBtnWidth / 2, y - configBtnHeight / 2, configBtnWidth, configBtnHeight, 16);
           configText.setColor("#000000");
-          this.tweens.add({
-            targets: [configBtn, configText],
-            scaleX: 1.08,
-            scaleY: 1.08,
-            duration: 120,
-            ease: 'Back.easeOut'
-          });
         }
       });
 
-      configBtn.on('pointerout', () => {
+      configBtnHitArea.on('pointerout', () => {
         if (feature.enabled) {
-          configBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY);
+          configBtnGraphics.clear();
+          configBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.8);
+          configBtnGraphics.fillRoundedRect(configBtnX - configBtnWidth / 2, y - configBtnHeight / 2, configBtnWidth, configBtnHeight, 16);
           configText.setColor("#ffffff");
-          this.tweens.add({
-            targets: [configBtn, configText],
-            scaleX: 1,
-            scaleY: 1,
-            duration: 120
-          });
         }
       });
 
-      configBtn.on('pointerdown', () => {
+      configBtnHitArea.on('pointerdown', () => {
         if (feature.enabled) {
           this.openFeatureConfigModal(feature);
         }
       });
     }
 
-    // Checkbox toggle click
-    checkbox.on('pointerdown', () => {
+    // Toggle click handler
+    toggleHitArea.on('pointerdown', () => {
       FeatureManager.toggleFeature(feature.id);
       feature.enabled = !feature.enabled;
 
-      // Update visual
-      checkbox.setFillStyle(feature.enabled ? DESIGN_CONSTANTS.COLORS.GOLD : 0x333333);
-      checkbox.setStrokeStyle(2, feature.enabled ? DESIGN_CONSTANTS.COLORS.GOLD : 0x888888);
+      // Animate toggle
+      const newHandleX = feature.enabled ? toggleX + toggleWidth / 2 - handleRadius - 3 : toggleX - toggleWidth / 2 + handleRadius + 3;
+      this.tweens.add({
+        targets: toggleHandle,
+        x: newHandleX,
+        duration: 150,
+        ease: 'Sine.easeInOut'
+      });
       
-      if (feature.enabled && !checkmark) {
-        checkmark = this.add.text(leftMargin, y, "✓", {
-          fontSize: "20px",
-          color: "#000000",
-          fontStyle: "bold"
-        }).setOrigin(0.5);
-        container.add(checkmark);
-      } else if (!feature.enabled && checkmark) {
-        checkmark.destroy();
-        checkmark = null;
-      }
+      // Update toggle background color
+      toggleBg.clear();
+      toggleBg.fillStyle(feature.enabled ? DESIGN_CONSTANTS.COLORS.GOLD : 0x444444, 1);
+      toggleBg.fillRoundedRect(toggleX - toggleWidth / 2, y - toggleHeight / 2, toggleWidth, toggleHeight, toggleHeight / 2);
 
       // Update text colors
       nameText.setColor(feature.enabled ? "#ffffff" : "#888888");
       nameText.setFontStyle(feature.enabled ? "bold" : "normal");
+      descText.setColor(feature.enabled ? "#aaaaaa" : "#666666");
 
       // Update configure button
-      if (configBtn) {
-        configBtn.setFillStyle(feature.enabled ? DESIGN_CONSTANTS.COLORS.PRIMARY : 0x444444);
-        configBtn.setStrokeStyle(2, feature.enabled ? 0xffffff : 0x666666);
+      if (configBtnGraphics && configText) {
+        const configBtnX = panelCenterX + panelWidth / 2 - 85;
+        const configBtnWidth = 100;
+        const configBtnHeight = 32;
+        
+        configBtnGraphics.clear();
+        configBtnGraphics.fillStyle(feature.enabled ? DESIGN_CONSTANTS.COLORS.PRIMARY : 0x3a3a3a, feature.enabled ? 0.8 : 0.5);
+        configBtnGraphics.fillRoundedRect(configBtnX - configBtnWidth / 2, y - configBtnHeight / 2, configBtnWidth, configBtnHeight, 16);
         configText.setColor(feature.enabled ? "#ffffff" : "#666666");
-
-        if (feature.enabled) {
-          configBtn.setInteractive({ useHandCursor: true });
-        } else {
-          configBtn.removeInteractive();
-        }
       }
 
       // Save configuration
@@ -809,75 +794,76 @@ export default class MenuScene extends Phaser.Scene {
    * Create language selector in settings
    * @param {Phaser.GameObjects.Container} container - Settings container
    * @param {number} y - Y position
+   * @param {number} panelWidth - Panel width
    */
-  createLanguageSelector(container, y) {
+  createLanguageSelector(container, y, panelWidth) {
     const leftMargin = 120;
 
-    // Label
+    // Label - subtle
     const label = this.add.text(leftMargin, y, this.languageManager.getText('menu.language'), {
-      fontSize: "24px",
+      fontSize: "16px",
       fontFamily: "serif",
-      color: "#f4a460",
-      fontStyle: "bold"
+      color: "#aaaaaa"
     });
     container.add(label);
 
-    // Language buttons
+    // Language buttons - pill shaped
     const languages = [
       { code: 'fr', abbr: 'FR', name: 'Français' },
       { code: 'en', abbr: 'EN', name: 'English' }
     ];
 
     const currentLang = this.languageManager.getCurrentLanguage();
-    const buttonWidth = 120;
-    const buttonSpacing = 20;
-    const startX = leftMargin + 180;
+    const buttonWidth = 100;
+    const buttonHeight = 34;
+    const buttonSpacing = 12;
+    const startX = leftMargin + 150;
 
     languages.forEach((lang, index) => {
       const x = startX + index * (buttonWidth + buttonSpacing);
       const isActive = lang.code === currentLang;
 
-      // Button
-      const button = this.add.rectangle(
-        x, y,
-        buttonWidth, 40,
-        isActive ? DESIGN_CONSTANTS.COLORS.GOLD : 0x555555
-      );
-      button.setStrokeStyle(2, isActive ? DESIGN_CONSTANTS.COLORS.GOLD : 0x888888);
-      button.setInteractive({ useHandCursor: true });
-      container.add(button);
-
-      // Abbreviation and name
-      const abbr = this.add.text(x, y - 8, lang.abbr, {
-        fontSize: "18px",
-        fontFamily: "serif",
-        color: isActive ? DESIGN_CONSTANTS.COLORS.GOLD : DESIGN_CONSTANTS.COLORS.PRIMARY,
-        fontStyle: "bold"
-      }).setOrigin(0.5);
-      container.add(abbr);
+      // Button - rounded pill
+      const buttonGraphics = this.add.graphics();
+      buttonGraphics.fillStyle(isActive ? DESIGN_CONSTANTS.COLORS.GOLD : 0x444444, isActive ? 1 : 0.6);
+      buttonGraphics.fillRoundedRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight, 17);
+      container.add(buttonGraphics);
       
-      const name = this.add.text(x, y + 10, lang.name, {
-        fontSize: "12px",
+      // Hit area
+      const hitArea = this.add.rectangle(x, y, buttonWidth, buttonHeight, 0x000000, 0);
+      hitArea.setInteractive({ useHandCursor: true });
+      container.add(hitArea);
+
+      // Language name only
+      const name = this.add.text(x, y, lang.name, {
+        fontSize: "13px",
         fontFamily: "serif",
-        color: isActive ? "#000000" : "#AAAAAA"
+        color: isActive ? "#000000" : "#cccccc",
+        fontStyle: isActive ? "bold" : "normal"
       }).setOrigin(0.5);
       container.add(name);
 
       // Hover effect
-      button.on('pointerover', () => {
+      hitArea.on('pointerover', () => {
         if (!isActive) {
-          button.setFillStyle(0x777777);
+          buttonGraphics.clear();
+          buttonGraphics.fillStyle(0x555555, 0.8);
+          buttonGraphics.fillRoundedRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight, 17);
+          name.setColor("#ffffff");
         }
       });
 
-      button.on('pointerout', () => {
+      hitArea.on('pointerout', () => {
         if (!isActive) {
-          button.setFillStyle(0x555555);
+          buttonGraphics.clear();
+          buttonGraphics.fillStyle(0x444444, 0.6);
+          buttonGraphics.fillRoundedRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight, 17);
+          name.setColor("#cccccc");
         }
       });
 
       // Click handler
-      button.on('pointerdown', () => {
+      hitArea.on('pointerdown', () => {
         if (!isActive) {
           this.languageManager.setLanguage(lang.code);
           // Destroy overlay immediately then restart scene
@@ -895,72 +881,67 @@ export default class MenuScene extends Phaser.Scene {
    * Create username section in settings
    * @param {Phaser.GameObjects.Container} container - Settings container
    * @param {number} y - Y position
+   * @param {number} panelWidth - Panel width
    */
-  createUsernameSection(container, y) {
+  createUsernameSection(container, y, panelWidth) {
     const leftMargin = 120;
 
-    // Label
+    // Label - subtle
     const label = this.add.text(leftMargin, y, this.languageManager.getText('menu.username') || 'Pseudo', {
-      fontSize: "24px",
+      fontSize: "16px",
       fontFamily: "serif",
-      color: "#f4a460",
-      fontStyle: "bold"
+      color: "#aaaaaa"
     });
     container.add(label);
 
     // Current username display
     const currentUsername = this.registry.get("currentUsername") || this.languageManager.getText('username.notSet') || 'Non défini';
-    const usernameDisplay = this.add.text(leftMargin + 180, y, currentUsername, {
-      fontSize: "20px",
+    const usernameDisplay = this.add.text(leftMargin + 130, y, currentUsername, {
+      fontSize: "16px",
       fontFamily: "serif",
-      color: DESIGN_CONSTANTS.COLORS.GOLD,
+      color: "#ffffff",
       fontStyle: "bold"
     });
     container.add(usernameDisplay);
 
-    // Change button
-    const changeBtn = this.add.rectangle(
-      550, y,
-      120, 40,
-      DESIGN_CONSTANTS.COLORS.PRIMARY
-    );
-    changeBtn.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.GOLD);
-    changeBtn.setInteractive({ useHandCursor: true });
-    container.add(changeBtn);
+    // Change button - small rounded pill
+    const changeBtnX = 520;
+    const changeBtnWidth = 90;
+    const changeBtnHeight = 30;
+    
+    const changeBtnGraphics = this.add.graphics();
+    changeBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.6);
+    changeBtnGraphics.fillRoundedRect(changeBtnX - changeBtnWidth / 2, y - changeBtnHeight / 2, changeBtnWidth, changeBtnHeight, 15);
+    container.add(changeBtnGraphics);
+    
+    const changeBtnHitArea = this.add.rectangle(changeBtnX, y, changeBtnWidth, changeBtnHeight, 0x000000, 0);
+    changeBtnHitArea.setInteractive({ useHandCursor: true });
+    container.add(changeBtnHitArea);
 
-    const changeBtnText = this.add.text(550, y, this.languageManager.getText('menu.change') || 'Modifier', {
-      fontSize: "16px",
+    const changeBtnText = this.add.text(changeBtnX, y, this.languageManager.getText('menu.change') || 'Modifier', {
+      fontSize: "12px",
       fontFamily: "serif",
       color: "#ffffff"
     }).setOrigin(0.5);
     container.add(changeBtnText);
 
     // Hover effects
-    changeBtn.on('pointerover', () => {
-      changeBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
+    changeBtnHitArea.on('pointerover', () => {
+      changeBtnGraphics.clear();
+      changeBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 1);
+      changeBtnGraphics.fillRoundedRect(changeBtnX - changeBtnWidth / 2, y - changeBtnHeight / 2, changeBtnWidth, changeBtnHeight, 15);
       changeBtnText.setColor("#000000");
-      this.tweens.add({
-        targets: [changeBtn, changeBtnText],
-        scaleX: 1.05,
-        scaleY: 1.05,
-        duration: 150,
-        ease: 'Back.easeOut'
-      });
     });
 
-    changeBtn.on('pointerout', () => {
-      changeBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY);
+    changeBtnHitArea.on('pointerout', () => {
+      changeBtnGraphics.clear();
+      changeBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.6);
+      changeBtnGraphics.fillRoundedRect(changeBtnX - changeBtnWidth / 2, y - changeBtnHeight / 2, changeBtnWidth, changeBtnHeight, 15);
       changeBtnText.setColor("#ffffff");
-      this.tweens.add({
-        targets: [changeBtn, changeBtnText],
-        scaleX: 1,
-        scaleY: 1,
-        duration: 150
-      });
     });
 
     // Click handler - open username overlay
-    changeBtn.on('pointerdown', () => {
+    changeBtnHitArea.on('pointerdown', () => {
       // Close settings overlay first
       this.closeSettingsOverlay();
       
@@ -978,54 +959,47 @@ export default class MenuScene extends Phaser.Scene {
    * Create reset scoreboard button in settings
    * @param {Phaser.GameObjects.Container} container - Settings container
    * @param {number} y - Y position
+   * @param {number} panelWidth - Panel width
    */
-  createResetScoreboardButton(container, y) {
-    const leftMargin = 120;
+  createResetScoreboardButton(container, y, panelWidth) {
+    const btnWidth = 280;
+    const btnHeight = 38;
+    const btnX = 400;
 
-    // Button with softer red
-    const button = this.add.rectangle(
-      350, y,
-      520, 55,
-      0xb91c1c
-    );
-    button.setStrokeStyle(2, 0xdc2626, 0.8);
-    button.setInteractive({ useHandCursor: true });
-    container.add(button);
+    // Button with rounded corners - softer red
+    const buttonGraphics = this.add.graphics();
+    buttonGraphics.fillStyle(0x8b2525, 0.8);
+    buttonGraphics.fillRoundedRect(btnX - btnWidth / 2, y - btnHeight / 2, btnWidth, btnHeight, 19);
+    container.add(buttonGraphics);
+    
+    // Hit area
+    const hitArea = this.add.rectangle(btnX, y, btnWidth, btnHeight, 0x000000, 0);
+    hitArea.setInteractive({ useHandCursor: true });
+    container.add(hitArea);
 
     // Button text
-    const text = this.add.text(350, y, this.languageManager.getText('menu.resetScoreboard'), {
-      fontSize: "21px",
+    const text = this.add.text(btnX, y, this.languageManager.getText('menu.resetScoreboard'), {
+      fontSize: "14px",
       fontFamily: "serif",
-      color: "#FFFFFF",
-      fontStyle: "bold",
-      letterSpacing: 1
+      color: "#ffffff"
     }).setOrigin(0.5);
     container.add(text);
 
     // Hover effects
-    button.on('pointerover', () => {
-      button.setFillStyle(0xdc2626);
-      this.tweens.add({
-        targets: [button, text],
-        scaleX: 1.05,
-        scaleY: 1.05,
-        duration: 150,
-        ease: 'Back.easeOut'
-      });
+    hitArea.on('pointerover', () => {
+      buttonGraphics.clear();
+      buttonGraphics.fillStyle(0xb33030, 1);
+      buttonGraphics.fillRoundedRect(btnX - btnWidth / 2, y - btnHeight / 2, btnWidth, btnHeight, 19);
     });
 
-    button.on('pointerout', () => {
-      button.setFillStyle(0xb91c1c);
-      this.tweens.add({
-        targets: [button, text],
-        scaleX: 1,
-        scaleY: 1,
-        duration: 150
-      });
+    hitArea.on('pointerout', () => {
+      buttonGraphics.clear();
+      buttonGraphics.fillStyle(0x8b2525, 0.8);
+      buttonGraphics.fillRoundedRect(btnX - btnWidth / 2, y - btnHeight / 2, btnWidth, btnHeight, 19);
     });
 
     // Click handler - show confirmation
-    button.on('pointerdown', () => {
+    hitArea.on('pointerdown', () => {
       this.showResetConfirmation();
     });
   }
@@ -1043,65 +1017,92 @@ export default class MenuScene extends Phaser.Scene {
     bg.setInteractive();
     confirmOverlay.add(bg);
 
-    // Modal panel
-    const panel = this.add.rectangle(400, 400, 500, 250, DESIGN_CONSTANTS.COLORS.BACKGROUND);
-    panel.setStrokeStyle(4, DESIGN_CONSTANTS.COLORS.GOLD);
-    confirmOverlay.add(panel);
+    // Modal panel - rounded
+    const panelWidth = 420;
+    const panelHeight = 200;
+    const panelGraphics = this.add.graphics();
+    panelGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.BACKGROUND, 0.98);
+    panelGraphics.fillRoundedRect(400 - panelWidth / 2, 400 - panelHeight / 2, panelWidth, panelHeight, 20);
+    panelGraphics.lineStyle(2, DESIGN_CONSTANTS.COLORS.GOLD, 0.5);
+    panelGraphics.strokeRoundedRect(400 - panelWidth / 2, 400 - panelHeight / 2, panelWidth, panelHeight, 20);
+    confirmOverlay.add(panelGraphics);
 
     // Question
-    const question = this.add.text(400, 330, this.languageManager.getText('menu.resetScoreboardConfirm'), {
-      fontSize: "20px",
+    const question = this.add.text(400, 340, this.languageManager.getText('menu.resetScoreboardConfirm'), {
+      fontSize: "16px",
       fontFamily: "serif",
-      color: "#FFD700",
+      color: "#ffffff",
       align: "center",
-      wordWrap: { width: 450 }
+      wordWrap: { width: 380 }
     }).setOrigin(0.5);
     confirmOverlay.add(question);
 
-    // Yes button
-    const yesBtn = this.add.rectangle(310, 450, 120, 50, 0xcc0000);
-    yesBtn.setStrokeStyle(2, 0xff0000);
-    yesBtn.setInteractive({ useHandCursor: true });
-    confirmOverlay.add(yesBtn);
+    // Yes button - rounded pill
+    const yesBtnWidth = 100;
+    const yesBtnHeight = 40;
+    const yesBtnX = 320;
+    const yesBtnY = 430;
+    
+    const yesBtnGraphics = this.add.graphics();
+    yesBtnGraphics.fillStyle(0x8b2525, 1);
+    yesBtnGraphics.fillRoundedRect(yesBtnX - yesBtnWidth / 2, yesBtnY - yesBtnHeight / 2, yesBtnWidth, yesBtnHeight, 20);
+    confirmOverlay.add(yesBtnGraphics);
+    
+    const yesBtnHitArea = this.add.rectangle(yesBtnX, yesBtnY, yesBtnWidth, yesBtnHeight, 0x000000, 0);
+    yesBtnHitArea.setInteractive({ useHandCursor: true });
+    confirmOverlay.add(yesBtnHitArea);
 
-    const yesText = this.add.text(310, 450, this.languageManager.getText('menu.yes'), {
-      fontSize: "22px",
+    const yesText = this.add.text(yesBtnX, yesBtnY, this.languageManager.getText('menu.yes'), {
+      fontSize: "16px",
       fontFamily: "serif",
-      color: "#FFFFFF",
+      color: "#ffffff",
       fontStyle: "bold"
     }).setOrigin(0.5);
     confirmOverlay.add(yesText);
 
-    // No button
-    const noBtn = this.add.rectangle(490, 450, 120, 50, DESIGN_CONSTANTS.COLORS.PRIMARY);
-    noBtn.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.GOLD);
-    noBtn.setInteractive({ useHandCursor: true });
-    confirmOverlay.add(noBtn);
+    // No button - rounded pill
+    const noBtnWidth = 100;
+    const noBtnHeight = 40;
+    const noBtnX = 480;
+    const noBtnY = 430;
+    
+    const noBtnGraphics = this.add.graphics();
+    noBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.8);
+    noBtnGraphics.fillRoundedRect(noBtnX - noBtnWidth / 2, noBtnY - noBtnHeight / 2, noBtnWidth, noBtnHeight, 20);
+    confirmOverlay.add(noBtnGraphics);
+    
+    const noBtnHitArea = this.add.rectangle(noBtnX, noBtnY, noBtnWidth, noBtnHeight, 0x000000, 0);
+    noBtnHitArea.setInteractive({ useHandCursor: true });
+    confirmOverlay.add(noBtnHitArea);
 
-    const noText = this.add.text(490, 450, this.languageManager.getText('menu.no'), {
-      fontSize: "22px",
+    const noText = this.add.text(noBtnX, noBtnY, this.languageManager.getText('menu.no'), {
+      fontSize: "16px",
       fontFamily: "serif",
-      color: "#FFFFFF",
+      color: "#ffffff",
       fontStyle: "bold"
     }).setOrigin(0.5);
     confirmOverlay.add(noText);
 
     // Yes button handlers
-    yesBtn.on('pointerover', () => {
-      yesBtn.setFillStyle(0xff0000);
+    yesBtnHitArea.on('pointerover', () => {
+      yesBtnGraphics.clear();
+      yesBtnGraphics.fillStyle(0xb33030, 1);
+      yesBtnGraphics.fillRoundedRect(yesBtnX - yesBtnWidth / 2, yesBtnY - yesBtnHeight / 2, yesBtnWidth, yesBtnHeight, 20);
     });
-    yesBtn.on('pointerout', () => {
-      yesBtn.setFillStyle(0xcc0000);
+    yesBtnHitArea.on('pointerout', () => {
+      yesBtnGraphics.clear();
+      yesBtnGraphics.fillStyle(0x8b2525, 1);
+      yesBtnGraphics.fillRoundedRect(yesBtnX - yesBtnWidth / 2, yesBtnY - yesBtnHeight / 2, yesBtnWidth, yesBtnHeight, 20);
     });
-    yesBtn.on('pointerdown', () => {
+    yesBtnHitArea.on('pointerdown', () => {
       this.stateManager.clearScoreboard();
       confirmOverlay.destroy();
       
       // Show success message
       const success = this.add.text(400, 500, '✓ Scoreboard cleared', {
-        fontSize: "24px",
+        fontSize: "18px",
         fontFamily: "serif",
-        color: "#00FF00",
+        color: "#4ade80",
         fontStyle: "bold"
       }).setOrigin(0.5);
       success.setDepth(1001);
@@ -1109,20 +1110,27 @@ export default class MenuScene extends Phaser.Scene {
       this.tweens.add({
         targets: success,
         alpha: 0,
-        y: 450,
-        duration: 2000,
+        y: 460,
+        duration: 1500,
+        ease: 'Sine.easeOut',
         onComplete: () => success.destroy()
       });
     });
 
     // No button handlers
-    noBtn.on('pointerover', () => {
-      noBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
+    noBtnHitArea.on('pointerover', () => {
+      noBtnGraphics.clear();
+      noBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 1);
+      noBtnGraphics.fillRoundedRect(noBtnX - noBtnWidth / 2, noBtnY - noBtnHeight / 2, noBtnWidth, noBtnHeight, 20);
+      noText.setColor("#000000");
     });
-    noBtn.on('pointerout', () => {
-      noBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY);
+    noBtnHitArea.on('pointerout', () => {
+      noBtnGraphics.clear();
+      noBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.8);
+      noBtnGraphics.fillRoundedRect(noBtnX - noBtnWidth / 2, noBtnY - noBtnHeight / 2, noBtnWidth, noBtnHeight, 20);
+      noText.setColor("#ffffff");
     });
-    noBtn.on('pointerdown', () => {
+    noBtnHitArea.on('pointerdown', () => {
       confirmOverlay.destroy();
     });
 
@@ -1131,8 +1139,8 @@ export default class MenuScene extends Phaser.Scene {
     this.tweens.add({
       targets: confirmOverlay,
       alpha: 1,
-      duration: 200
+      duration: 150,
+      ease: 'Sine.easeOut'
     });
   }
 }
-
