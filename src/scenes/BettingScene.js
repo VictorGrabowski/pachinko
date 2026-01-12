@@ -18,6 +18,12 @@ export default class BettingScene extends Phaser.Scene {
     this.languageManager = LanguageManager;
     this.selectedBet = 100; // Default bet
     this.currentMalusConfig = null; // Current random malus configuration
+    this.betOptions = [
+      { amount: 100, multiplier: "x1", value: 1.0 },
+      { amount: 200, multiplier: "x2", value: 2.0 },
+      { amount: 1000, multiplier: "x10", value: 10.0 },
+      { amount: 2000, multiplier: "x20", value: 20.0 }
+    ];
   }
 
   create() {
@@ -32,7 +38,7 @@ export default class BettingScene extends Phaser.Scene {
 
     // Check if username is already set
     const currentUsername = this.registry.get("currentUsername");
-    
+
     // If no username, show username input overlay (début de cycle)
     if (!currentUsername) {
       this.usernameOverlay = new UsernameInputOverlay(this, (username) => {
@@ -40,7 +46,7 @@ export default class BettingScene extends Phaser.Scene {
         stateManager.saveUsername(username);
         this.usernameOverlay = null;
       });
-      
+
       this.time.delayedCall(300, () => {
         if (this.usernameOverlay) {
           this.usernameOverlay.show();
@@ -120,6 +126,16 @@ export default class BettingScene extends Phaser.Scene {
 
     // Betting options
     this.createBettingOptions(centerX, 680);
+
+    // Total Multiplier Calculation Display
+    this.totalMultiplierText = this.add.text(centerX, 750, "", {
+      fontSize: "18px",
+      color: "#FFFFFF",
+      fontFamily: "serif",
+      fontStyle: "bold",
+    }).setOrigin(0.5);
+
+    this.updateTotalMultiplierDisplay();
 
     // Start button (Accept & Bet)
     const startButton = this.add
@@ -300,8 +316,8 @@ export default class BettingScene extends Phaser.Scene {
       this.malusContainer.add(name);
 
       // Bonus percentage (if not hardcore)
-      const bonusText = malus.isHardcore 
-        ? "x2 TOTAL" 
+      const bonusText = malus.isHardcore
+        ? "x2 TOTAL"
         : `+${malus.bonusPercent}%`;
       const bonus = this.add.text(
         cardX, cardsY + 35,
@@ -422,6 +438,7 @@ export default class BettingScene extends Phaser.Scene {
       duration: 150,
       onComplete: () => {
         this.updateMalusDisplay(400, 340);
+        this.updateTotalMultiplierDisplay();
         this.tweens.add({
           targets: this.malusContainer,
           alpha: 1,
@@ -455,7 +472,7 @@ export default class BettingScene extends Phaser.Scene {
     // Store malus configuration in registry for GameScene
     this.registry.set("activeMaluses", this.currentMalusConfig.selectedMaluses);
     this.registry.set("malusMultiplier", this.currentMalusConfig.multiplier);
-    
+
     // Clear the temporary malus config (player committed to this config)
     this.registry.remove("currentMalusConfig");
 
@@ -467,13 +484,6 @@ export default class BettingScene extends Phaser.Scene {
   }
 
   createBettingOptions(centerX, y) {
-    const betOptions = [
-      { amount: 100, multiplier: "x1" },
-      { amount: 200, multiplier: "x2" },
-      { amount: 1000, multiplier: "x10" },
-      { amount: 2000, multiplier: "x20" }
-    ];
-
     const buttonWidth = 140;
     const buttonHeight = 70;
     const spacing = 15;
@@ -482,9 +492,9 @@ export default class BettingScene extends Phaser.Scene {
 
     this.betButtons = [];
 
-    betOptions.forEach((option, index) => {
+    this.betOptions.forEach((option, index) => {
       const x = startX + (buttonWidth / 2) + index * (buttonWidth + spacing);
-      
+
       const isSelected = option.amount === this.selectedBet;
       const button = this.add.rectangle(
         x, y,
@@ -529,13 +539,32 @@ export default class BettingScene extends Phaser.Scene {
 
   selectBet(amount) {
     this.selectedBet = amount;
-    
+
     this.betButtons.forEach(btn => {
       const isSelected = btn.amount === amount;
       btn.button.setFillStyle(isSelected ? DESIGN_CONSTANTS.COLORS.GOLD : DESIGN_CONSTANTS.COLORS.PRIMARY);
       btn.amountText.setColor(isSelected ? "#000000" : "#FFFFFF");
       btn.multiplierText.setColor(isSelected ? "#000000" : "#FFD700");
     });
+
+    this.updateTotalMultiplierDisplay();
+  }
+
+  updateTotalMultiplierDisplay() {
+    if (!this.currentMalusConfig || !this.selectedBet) return;
+
+    const malusMultiplier = this.currentMalusConfig.multiplier;
+    const selectedOption = this.betOptions.find(opt => opt.amount === this.selectedBet);
+    const betMultiplier = selectedOption ? selectedOption.value : 1.0;
+    const totalMultiplier = malusMultiplier * betMultiplier;
+
+    const malusLabel = this.languageManager.getText("malus.multiplierLabel");
+    const betLabel = this.languageManager.getText("betting.betMultiplierLabel");
+    const totalLabel = this.languageManager.getText("malus.totalMultiplierLabel");
+
+    this.totalMultiplierText.setText(
+      `${malusLabel} (x${malusMultiplier.toFixed(2)}) * ${betLabel} (x${betMultiplier.toFixed(0)}) = ${totalLabel} (x${totalMultiplier.toFixed(2)})`
+    );
   }
 
   updateBalanceDisplay() {

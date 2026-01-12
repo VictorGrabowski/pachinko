@@ -108,6 +108,7 @@ export const TRANSLATIONS = {
       backToMenu: "← Menu",
       invalidBet: "Mise invalide. Choisissez 100, 200, 1000 ou 2000 Yens.",
       insufficientBalance: "Balance insuffisante pour cette mise.",
+      betMultiplierLabel: "Modificateur de mise",
     },
     malus: {
       title: "Configuration Aléatoire",
@@ -130,6 +131,8 @@ export const TRANSLATIONS = {
       randomPinSizeDesc: "Les pins ont des tailles variées",
       hardcoreMode: "Mode Hardcore",
       hardcoreModeDesc: "Contrôle de lancement avec curseurs oscillants",
+      multiplierLabel: "Modificateur des malus",
+      totalMultiplierLabel: "Modificateur total",
     },
     username: {
       title: "Bienvenue",
@@ -198,6 +201,7 @@ export const TRANSLATIONS = {
       backToMenu: "← Menu",
       invalidBet: "Invalid bet. Choose 100, 200, 1000 or 2000 Yens.",
       insufficientBalance: "Insufficient balance for this bet.",
+      betMultiplierLabel: "Bet Multiplier",
     },
     malus: {
       title: "Random Configuration",
@@ -220,6 +224,8 @@ export const TRANSLATIONS = {
       randomPinSizeDesc: "Pins have varied sizes",
       hardcoreMode: "Hardcore Mode",
       hardcoreModeDesc: "Launch control with oscillating cursors",
+      multiplierLabel: "Malus Multiplier",
+      totalMultiplierLabel: "Total Multiplier",
     },
     username: {
       title: "Welcome",
