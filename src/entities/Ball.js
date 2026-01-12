@@ -71,6 +71,11 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     this.isActive = true;
     this.pinHitCount = 0;
     this.lastHitPin = null; // Track the last pin hit to prevent double-counting
+    
+    // Stuck ball detection - track collision history
+    this.collisionHistory = []; // Array of pin references
+    this.collisionHistoryLimit = 100; // Check last 100 collisions
+    this.maxUniquePinsForStuck = 2; // If only 2 or fewer unique pins, ball is stuck
   }
 
   /**
@@ -93,6 +98,9 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
    * @returns {boolean} - True if combo was incremented, false if same pin hit again
    */
   hitPin(pin) {
+    // Record collision for stuck detection (even same pin)
+    this.recordPinCollision(pin);
+    
     // Only count if it's a different pin than the last one hit
     if (pin === this.lastHitPin) {
       return false; // Same pin, don't increment
@@ -122,6 +130,36 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
    */
   getCombo() {
     return this.pinHitCount;
+  }
+
+  /**
+   * Record a pin collision for stuck detection
+   * @param {Pin} pin - The pin that was hit
+   */
+  recordPinCollision(pin) {
+    this.collisionHistory.push(pin);
+    
+    // Keep only the last N collisions
+    if (this.collisionHistory.length > this.collisionHistoryLimit) {
+      this.collisionHistory.shift();
+    }
+  }
+
+  /**
+   * Check if ball is stuck oscillating between 2 pins
+   * @returns {boolean} - True if ball appears stuck
+   */
+  isStuckBetweenPins() {
+    // Need full collision history to determine if stuck
+    if (this.collisionHistory.length < this.collisionHistoryLimit) {
+      return false;
+    }
+    
+    // Count unique pins in collision history
+    const uniquePins = new Set(this.collisionHistory);
+    
+    // If only hitting 2 or fewer pins in last 100 collisions, ball is stuck
+    return uniquePins.size <= this.maxUniquePinsForStuck;
   }
 
   /**

@@ -87,7 +87,10 @@ export default class UIScene extends Phaser.Scene {
       fontStyle: "bold",
     }).setOrigin(0.5);
 
-    // Cash out enabled by default (no balls falling at start)
+    // Track state for cash out button
+    this.currentLives = DESIGN_CONSTANTS.MAX_LIVES;
+    this.hasActiveBalls = false;
+    // Cash out enabled by default (no balls falling at start and has lives)
     this.cashOutEnabled = true;
 
     this.cashOutButton.on("pointerover", () => {
@@ -127,7 +130,7 @@ export default class UIScene extends Phaser.Scene {
     this.gameScene.events.on("scoreUpdate", this.updateScore, this);
     this.gameScene.events.on("livesUpdate", this.updateLives, this);
     // ballStateChange is emitted to UIScene.events from GameScene
-    this.events.on("ballStateChange", this.updateCashOutButton, this);
+    this.events.on("ballStateChange", this.onBallStateChange, this);
     
     // Listen for hardcore mode events
     if (FeatureManager.isEnabled("hardcore_launch")) {
@@ -142,7 +145,10 @@ export default class UIScene extends Phaser.Scene {
    * Update score display
    */
   updateScore(newScore) {
-    this.scoreText.setText(formatScore(newScore));
+    // Apply bet multiplier to displayed score
+    const betMultiplier = this.budgetManager ? this.budgetManager.getMultiplier() : 1;
+    const displayScore = newScore * betMultiplier;
+    this.scoreText.setText(formatScore(displayScore));
 
     // Pulse animation - ENHANCED
     this.tweens.add({
@@ -158,10 +164,14 @@ export default class UIScene extends Phaser.Scene {
    * Update lives display
    */
   updateLives(newLives) {
+    this.currentLives = newLives;
     this.updateLivesDisplay(newLives);
 
     // Shake animation on life lost
     this.cameras.main.shake(200, 0.005);
+    
+    // Update cash out button state (requires at least 1 life)
+    this.updateCashOutButtonState();
   }
 
   /**
@@ -172,10 +182,19 @@ export default class UIScene extends Phaser.Scene {
   }
 
   /**
-   * Update cash out button state - disabled when balls are falling
+   * Handle ball state change event
    */
-  updateCashOutButton(hasActiveBalls) {
-    this.cashOutEnabled = !hasActiveBalls;
+  onBallStateChange(hasActiveBalls) {
+    this.hasActiveBalls = hasActiveBalls;
+    this.updateCashOutButtonState();
+  }
+
+  /**
+   * Update cash out button state - requires at least 1 life AND no active balls
+   */
+  updateCashOutButtonState() {
+    // Cash out enabled only if: at least 1 life AND no active balls
+    this.cashOutEnabled = this.currentLives >= 1 && !this.hasActiveBalls;
     
     if (this.cashOutEnabled) {
       // Enable button - full opacity and interactive cursor

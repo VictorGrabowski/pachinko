@@ -256,6 +256,13 @@ export function setActivePalette(paletteName) {
   }
 }
 
+// Preview palette without saving (for hover preview)
+export function previewPalette(paletteName) {
+  if (COLOR_PALETTES[paletteName]) {
+    Object.assign(DESIGN_CONSTANTS.COLORS, COLOR_PALETTES[paletteName].colors);
+  }
+}
+
 export function getActivePalette() {
   return localStorage.getItem('pachinko_active_palette') || 'classic';
 }

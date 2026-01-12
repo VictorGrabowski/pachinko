@@ -692,8 +692,10 @@ export default class GameScene extends Phaser.Scene {
       });
     }
 
-    // Show floating score text
-    this.showFloatingText(ball.x, ball.y, `+${points}`);
+    // Show floating score text with bet multiplier applied
+    const betMultiplier = this.budgetManager ? this.budgetManager.getMultiplier() : 1;
+    const displayPoints = points * betMultiplier;
+    this.showFloatingText(ball.x, ball.y, `+${displayPoints}`);
 
     // Show combo text if significant
     if (combo >= DESIGN_CONSTANTS.COMBO_THRESHOLD) {
@@ -880,6 +882,30 @@ export default class GameScene extends Phaser.Scene {
         }
       });
     }
+
+    // Check for stuck balls (oscillating between 2 pins)
+    this.balls.forEach((ball) => {
+      if (ball.active && ball.isStuckBetweenPins()) {
+        console.log('Ball stuck between pins - removing');
+        ball.destroy();
+        this.activeBalls--;
+        this.lives--;
+        
+        // Re-enable CASH OUT button if no more active balls
+        if (this.activeBalls === 0) {
+          this.scene.get('UIScene').events.emit('ballStateChange', false);
+        }
+        
+        this.events.emit('livesUpdate', this.lives);
+        
+        if (this.lives <= 0) {
+          this.gameOver();
+        }
+      }
+    });
+    
+    // Remove destroyed balls from array
+    this.balls = this.balls.filter((ball) => ball.active);
 
     // Check for balls that fell off screen (using filter to avoid mutation during iteration)
     const previousBallCount = this.balls.length;

@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { DESIGN_CONSTANTS, TRANSLATIONS, COLOR_PALETTES, getActivePalette, setActivePalette } from "../config/gameConfig.js";
+import { DESIGN_CONSTANTS, TRANSLATIONS, COLOR_PALETTES, getActivePalette, setActivePalette, previewPalette } from "../config/gameConfig.js";
 import { CATEGORY_LABELS } from "../config/featureConfig.js";
 import FeatureManager from "../managers/FeatureManager.js";
 import LanguageManager from "../managers/LanguageManager.js";
@@ -276,16 +276,35 @@ export default class MenuScene extends Phaser.Scene {
 
     // Boutons de palette - pill shaped
     const paletteKeys = Object.keys(COLOR_PALETTES);
-    const activePalette = getActivePalette();
+    let confirmedPalette = getActivePalette();
     const buttonWidth = 90;
     const buttonHeight = 36;
     const spacing = 8;
+
+    // Store button references for updating active states
+    const paletteButtons = [];
+
+    // Function to update all button states
+    const updateButtonStates = () => {
+      paletteButtons.forEach(({ key, buttonGraphics, label, x, y }) => {
+        const palette = COLOR_PALETTES[key];
+        const isActive = key === confirmedPalette;
+        buttonGraphics.clear();
+        buttonGraphics.fillStyle(palette.colors.PRIMARY, isActive ? 1 : 0.4);
+        buttonGraphics.fillRoundedRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight, 18);
+        if (isActive) {
+          buttonGraphics.lineStyle(2, palette.colors.GOLD, 0.8);
+          buttonGraphics.strokeRoundedRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight, 18);
+        }
+        label.setColor(isActive ? "#ffffff" : "#cccccc");
+      });
+    };
 
     paletteKeys.forEach((key, index) => {
       const palette = COLOR_PALETTES[key];
       const x = leftMargin + 20 + index * (buttonWidth + spacing) + buttonWidth / 2;
       const y = yPos + 38;
-      const isActive = key === activePalette;
+      const isActive = key === confirmedPalette;
 
       // Bouton - rounded pill
       const buttonGraphics = this.add.graphics();
@@ -313,18 +332,31 @@ export default class MenuScene extends Phaser.Scene {
         .setOrigin(0.5);
       container.add(label);
 
-      // Interactions
+      // Store button reference
+      paletteButtons.push({ key, buttonGraphics, label, x, y });
+
+      // Interactions - hover to preview
       hitArea.on("pointerover", () => {
-        if (key !== getActivePalette()) {
+        if (key !== confirmedPalette) {
+          // Preview this palette
+          previewPalette(key);
+          this.refreshSettingsOverlayColors();
+          // Highlight this button
           buttonGraphics.clear();
-          buttonGraphics.fillStyle(palette.colors.PRIMARY, 0.7);
+          buttonGraphics.fillStyle(palette.colors.PRIMARY, 0.85);
           buttonGraphics.fillRoundedRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight, 18);
+          buttonGraphics.lineStyle(2, palette.colors.GOLD, 0.5);
+          buttonGraphics.strokeRoundedRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight, 18);
           label.setColor("#ffffff");
         }
       });
 
       hitArea.on("pointerout", () => {
-        if (key !== getActivePalette()) {
+        if (key !== confirmedPalette) {
+          // Revert to confirmed palette
+          previewPalette(confirmedPalette);
+          this.refreshSettingsOverlayColors();
+          // Reset button state
           buttonGraphics.clear();
           buttonGraphics.fillStyle(palette.colors.PRIMARY, 0.4);
           buttonGraphics.fillRoundedRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight, 18);
@@ -333,13 +365,13 @@ export default class MenuScene extends Phaser.Scene {
       });
 
       hitArea.on("pointerdown", () => {
+        // Confirm the selection
         setActivePalette(key);
-        // Destroy overlay immediately then restart scene
-        if (this.settingsOverlay) {
-          this.settingsOverlay.destroy();
-          this.settingsOverlay = null;
-        }
-        this.scene.restart();
+        confirmedPalette = key;
+        // Update all button states to reflect new selection
+        updateButtonStates();
+        // Refresh colors to match confirmed palette
+        this.refreshSettingsOverlayColors();
       });
     });
   }
@@ -368,6 +400,11 @@ export default class MenuScene extends Phaser.Scene {
     this.settingsOverlay = this.add.container(0, 0);
     this.settingsOverlay.setDepth(999);
 
+    // Reset stored references for color refresh
+    this.settingsCategoryElements = [];
+    this.settingsFeatureToggles = [];
+    this.settingsCloseBtnHovered = false;
+
     // Background dimmer with subtle gradient feel
     const dimmer = this.add.rectangle(400, 500, 800, 1000, 0x000000, 0.8);
     dimmer.setInteractive();
@@ -383,6 +420,9 @@ export default class MenuScene extends Phaser.Scene {
     const contentHeight = baseHeight + (45 * numCategories) + (70 * numFeatures) + (8 * Math.max(0, numCategories - 1));
     const panelHeight = Math.min(880, Math.max(580, contentHeight));
     
+    // Store panel dimensions for refresh
+    this.settingsPanelHeight = panelHeight;
+    
     // Settings panel with rounded corners
     const panelWidth = 680;
     const panelCenterY = 500;
@@ -390,10 +430,16 @@ export default class MenuScene extends Phaser.Scene {
     const panelBottom = panelCenterY + panelHeight / 2;
     const panelRadius = 24;
     
+    // Store panelTop for refresh
+    this.settingsPanelTop = panelTop;
+    
     // Main panel background with rounded corners
     const panelGraphics = this.add.graphics();
     this.drawRoundedRect(panelGraphics, 400, panelCenterY, panelWidth, panelHeight, panelRadius, DESIGN_CONSTANTS.COLORS.BACKGROUND, 0.97, DESIGN_CONSTANTS.COLORS.GOLD, 2, 0.6);
     this.settingsOverlay.add(panelGraphics);
+    
+    // Store reference for refresh
+    this.settingsPanelGraphics = panelGraphics;
     
     // Subtle inner glow effect
     const innerGlow = this.add.graphics();
@@ -416,6 +462,9 @@ export default class MenuScene extends Phaser.Scene {
     lineGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 0.4);
     lineGraphics.fillRoundedRect(300, panelTop + 65, 200, 2, 1);
     this.settingsOverlay.add(lineGraphics);
+    
+    // Store reference for refresh
+    this.settingsLineGraphics = lineGraphics;
 
     let yPos = panelTop + 90;
 
@@ -436,6 +485,10 @@ export default class MenuScene extends Phaser.Scene {
     sep1Graphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 0.15);
     sep1Graphics.fillRoundedRect(400 - (panelWidth - 120) / 2, yPos, panelWidth - 120, 2, 1);
     this.settingsOverlay.add(sep1Graphics);
+    
+    // Store reference for refresh
+    this.settingsSep1Graphics = sep1Graphics;
+    this.settingsSep1Y = yPos;
     yPos += 16;
 
     // Reset scoreboard button
@@ -447,6 +500,10 @@ export default class MenuScene extends Phaser.Scene {
     sep2Graphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 0.15);
     sep2Graphics.fillRoundedRect(400 - (panelWidth - 120) / 2, yPos, panelWidth - 120, 2, 1);
     this.settingsOverlay.add(sep2Graphics);
+    
+    // Store reference for refresh
+    this.settingsSep2Graphics = sep2Graphics;
+    this.settingsSep2Y = yPos;
     yPos += 18;
 
     // Store start position for features section
@@ -480,11 +537,18 @@ export default class MenuScene extends Phaser.Scene {
       const categoryHeader = this.add.text(400, featuresStartY + featuresYPos + 3, categoryLabel, {
         fontSize: "16px",
         fontFamily: "serif",
-        color: DESIGN_CONSTANTS.COLORS.SAKURA,
+        color: Phaser.Display.Color.IntegerToColor(DESIGN_CONSTANTS.COLORS.SAKURA).rgba,
         fontStyle: "bold",
         letterSpacing: 2
       }).setOrigin(0.5);
       featuresContainer.add(categoryHeader);
+      
+      // Store reference for refresh
+      this.settingsCategoryElements.push({
+        bgGraphics: categoryBgGraphics,
+        header: categoryHeader,
+        yPos: featuresStartY + featuresYPos
+      });
       
       featuresYPos += 40;
 
@@ -519,6 +583,11 @@ export default class MenuScene extends Phaser.Scene {
       scrollThumb.fillRoundedRect(735, featuresStartY + 5, 6, thumbHeight, 3);
       this.settingsOverlay.add(scrollThumb);
       
+      // Store references for refresh
+      this.settingsScrollThumb = scrollThumb;
+      this.settingsScrollThumbY = featuresStartY + 5;
+      this.settingsScrollThumbHeight = thumbHeight;
+      
       // Mouse wheel scroll
       this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
         if (!this.settingsOverlay) return;
@@ -546,6 +615,10 @@ export default class MenuScene extends Phaser.Scene {
     closeBtnGraphics.fillRoundedRect(400 - closeBtnWidth / 2, closeBtnY - closeBtnHeight / 2, closeBtnWidth, closeBtnHeight, 22);
     this.settingsOverlay.add(closeBtnGraphics);
     
+    // Store references for refresh
+    this.settingsCloseBtnGraphics = closeBtnGraphics;
+    this.settingsCloseBtnY = closeBtnY;
+    
     // Invisible hit area for the button
     const closeBtnHitArea = this.add.rectangle(400, closeBtnY, closeBtnWidth, closeBtnHeight, 0x000000, 0);
     closeBtnHitArea.setInteractive({ useHandCursor: true });
@@ -562,6 +635,7 @@ export default class MenuScene extends Phaser.Scene {
 
     // Close button interactions
     closeBtnHitArea.on('pointerover', () => {
+      this.settingsCloseBtnHovered = true;
       closeBtnGraphics.clear();
       closeBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 1);
       closeBtnGraphics.fillRoundedRect(400 - closeBtnWidth / 2, closeBtnY - closeBtnHeight / 2, closeBtnWidth, closeBtnHeight, 22);
@@ -569,6 +643,7 @@ export default class MenuScene extends Phaser.Scene {
     });
 
     closeBtnHitArea.on('pointerout', () => {
+      this.settingsCloseBtnHovered = false;
       closeBtnGraphics.clear();
       closeBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.ACCENT, 1);
       closeBtnGraphics.fillRoundedRect(400 - closeBtnWidth / 2, closeBtnY - closeBtnHeight / 2, closeBtnWidth, closeBtnHeight, 22);
@@ -788,6 +863,81 @@ export default class MenuScene extends Phaser.Scene {
         }
       }
     });
+  }
+
+  /**
+   * Refresh colors of the settings overlay based on current DESIGN_CONSTANTS.COLORS
+   * Called when previewing or selecting a new palette
+   */
+  refreshSettingsOverlayColors() {
+    if (!this.settingsOverlay) return;
+
+    // Refresh the panel graphics
+    if (this.settingsPanelGraphics) {
+      const panelWidth = 680;
+      const panelHeight = this.settingsPanelHeight || 580;
+      const panelCenterY = 500;
+      const panelRadius = 24;
+      
+      this.settingsPanelGraphics.clear();
+      this.drawRoundedRect(this.settingsPanelGraphics, 400, panelCenterY, panelWidth, panelHeight, panelRadius, DESIGN_CONSTANTS.COLORS.BACKGROUND, 0.97, DESIGN_CONSTANTS.COLORS.GOLD, 2, 0.6);
+    }
+
+    // Refresh decorative line
+    if (this.settingsLineGraphics) {
+      this.settingsLineGraphics.clear();
+      this.settingsLineGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 0.4);
+      this.settingsLineGraphics.fillRoundedRect(300, this.settingsPanelTop + 65, 200, 2, 1);
+    }
+
+    // Refresh separators
+    if (this.settingsSep1Graphics) {
+      const panelWidth = 680;
+      this.settingsSep1Graphics.clear();
+      this.settingsSep1Graphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 0.15);
+      this.settingsSep1Graphics.fillRoundedRect(400 - (panelWidth - 120) / 2, this.settingsSep1Y, panelWidth - 120, 2, 1);
+    }
+
+    if (this.settingsSep2Graphics) {
+      const panelWidth = 680;
+      this.settingsSep2Graphics.clear();
+      this.settingsSep2Graphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 0.15);
+      this.settingsSep2Graphics.fillRoundedRect(400 - (panelWidth - 120) / 2, this.settingsSep2Y, panelWidth - 120, 2, 1);
+    }
+
+    // Refresh close button
+    if (this.settingsCloseBtnGraphics && !this.settingsCloseBtnHovered) {
+      this.settingsCloseBtnGraphics.clear();
+      this.settingsCloseBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.ACCENT, 1);
+      this.settingsCloseBtnGraphics.fillRoundedRect(400 - 90, this.settingsCloseBtnY - 22, 180, 44, 22);
+    }
+
+    // Refresh category backgrounds and headers
+    if (this.settingsCategoryElements) {
+      this.settingsCategoryElements.forEach(({ bgGraphics, header, yPos }) => {
+        const panelWidth = 680;
+        bgGraphics.clear();
+        bgGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.12);
+        bgGraphics.fillRoundedRect(400 - (panelWidth - 80) / 2, yPos - 12, panelWidth - 80, 30, 8);
+        header.setColor(Phaser.Display.Color.IntegerToColor(DESIGN_CONSTANTS.COLORS.SAKURA).rgba);
+      });
+    }
+
+    // Refresh scroll thumb if exists
+    if (this.settingsScrollThumb) {
+      this.settingsScrollThumb.clear();
+      this.settingsScrollThumb.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 0.6);
+      this.settingsScrollThumb.fillRoundedRect(735, this.settingsScrollThumbY, 6, this.settingsScrollThumbHeight, 3);
+    }
+
+    // Refresh feature toggle backgrounds
+    if (this.settingsFeatureToggles) {
+      this.settingsFeatureToggles.forEach(({ toggleBg, enabled }) => {
+        toggleBg.clear();
+        toggleBg.fillStyle(enabled ? DESIGN_CONSTANTS.COLORS.GOLD : 0x444444, 1);
+        toggleBg.fillRoundedRect(toggleBg.toggleX - 22, toggleBg.toggleY - 12, 44, 24, 12);
+      });
+    }
   }
 
   /**
