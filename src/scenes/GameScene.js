@@ -4,6 +4,7 @@ import Pin from "../entities/Pin.js";
 import AudioSystem from "../systems/AudioSystem.js";
 import Creature from "../entities/Creature.js";
 import stateManager from "../managers/StateManager.js";
+import GlobalScoreManager from "../managers/GlobalScoreManager.js";
 import LanguageManager from "../managers/LanguageManager.js";
 import {
   DESIGN_CONSTANTS,
@@ -13,7 +14,7 @@ import {
   HARDCORE_LAUNCH,
 } from "../config/gameConfig.js";
 import BudgetManager from "../managers/BudgetManager.js";
-import { applyWabiSabi, formatScore } from "../utils/helpers.js";
+import { applyWabiSabi, formatScore, formatNumber } from "../utils/helpers.js";
 import FeatureManager from "../managers/FeatureManager.js";
 import EventBus, { GameEvents } from "../core/EventBus.js";
 import EffectsManager from "../managers/EffectsManager.js";
@@ -1553,11 +1554,7 @@ export default class GameScene extends Phaser.Scene {
       if (!canContinue) {
         // Balance < 100 : Fin du cycle, GameOverScene
         const username = this.registry.get("currentUsername") || "Player";
-        stateManager.saveScoreEntry({
-          username: username,
-          score: winningsResult.balanceMax,
-          date: new Date().toISOString()
-        });
+        GlobalScoreManager.submitScore(username, winningsResult.balanceMax);
 
         this.scene.start("GameOverScene", {
           score: this.score,

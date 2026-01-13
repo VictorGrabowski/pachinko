@@ -104,6 +104,7 @@ export const TRANSLATIONS = {
       noScores: "Aucun score enregistré",
       back: "Retour",
       top10: "Top 10",
+      loading: "Chargement...",
     },
     betting: {
       title: "Placer votre mise",
@@ -337,6 +338,7 @@ export const TRANSLATIONS = {
       noScores: "No scores recorded",
       back: "Back",
       top10: "Top 10",
+      loading: "Loading...",
     },
     betting: {
       title: "Place your bet",

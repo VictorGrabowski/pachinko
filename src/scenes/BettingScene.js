@@ -3,6 +3,7 @@ import BudgetManager from "../managers/BudgetManager.js";
 import UsernameInputOverlay from "../ui/UsernameInputOverlay.js";
 import LanguageManager from "../managers/LanguageManager.js";
 import stateManager from "../managers/StateManager.js";
+import GlobalScoreManager from "../managers/GlobalScoreManager.js";
 import {
   DESIGN_CONSTANTS,
 } from "../config/gameConfig.js";
@@ -77,7 +78,7 @@ export default class BettingScene extends Phaser.Scene {
     // Username display
     const username = this.registry.get("currentUsername") || this.languageManager.getText("betting.player");
     this.usernameText = this.add
-      .text(centerX, 130, `${this.languageManager.getText("betting.player")} : ${username}`, {
+      .text(centerX, 130, `${this.languageManager.getText("betting.player")} : ${username} `, {
         fontSize: "20px",
         color: "#F4A460",
         fontFamily: "serif",
@@ -93,7 +94,7 @@ export default class BettingScene extends Phaser.Scene {
       this.usernameOverlay = new UsernameInputOverlay(this, (newUsername) => {
         this.registry.set("currentUsername", newUsername);
         stateManager.saveUsername(newUsername);
-        this.usernameText.setText(`${this.languageManager.getText("betting.player")} : ${newUsername}`);
+        this.usernameText.setText(`${this.languageManager.getText("betting.player")} : ${newUsername} `);
         this.usernameOverlay = null;
       });
       this.usernameOverlay.show();
@@ -279,7 +280,7 @@ export default class BettingScene extends Phaser.Scene {
     }
 
     const colorInt = (r << 16) + (g << 8) + b;
-    const colorHex = `#${colorInt.toString(16).padStart(6, '0')}`;
+    const colorHex = `#${colorInt.toString(16).padStart(6, '0')} `;
 
     // Size interpolation: 42px to 64px
     const fontSize = Math.floor(42 + (t * 22)) + "px";
@@ -325,7 +326,7 @@ export default class BettingScene extends Phaser.Scene {
     // Label with Skull if hardcore
     const labelText = hasHardcore
       ? `💀 ${this.languageManager.getText("malus.multiplier")} (x2) 💀`
-      : `${this.languageManager.getText("malus.multiplier")}:`;
+      : `${this.languageManager.getText("malus.multiplier")}: `;
 
     const multiplierLabel = this.add.text(
       centerX, centerY - 80,
@@ -344,7 +345,7 @@ export default class BettingScene extends Phaser.Scene {
 
     const multiplierText = this.add.text(
       centerX, centerY - 45,
-      `x${multiplier.toFixed(2)}`,
+      `x${multiplier.toFixed(2)} `,
       {
         fontSize: style.fontSize,
         color: style.color,
@@ -432,7 +433,7 @@ export default class BettingScene extends Phaser.Scene {
         color = "#FFFFFF"; // White for base
       } else {
         const val = (malus.bonusPercent / 100).toFixed(2);
-        impactText = `+${val}x`;
+        impactText = `+ ${val} x`;
         color = "#FFFF00"; // Yellow for normal adds
       }
 
@@ -712,14 +713,14 @@ export default class BettingScene extends Phaser.Scene {
 
     // Format: (Malus xA) * (Bet xB) = TOTAL xC
     this.totalMultiplierText.setText(
-      `(${malusMultiplier.toFixed(2)})  x  (${betMultiplier.toFixed(0)})  =  x${totalMultiplier.toFixed(2)}`
+      `(${malusMultiplier.toFixed(2)})  x(${betMultiplier.toFixed(0)}) = x${totalMultiplier.toFixed(2)} `
     );
 
     // Contextual explanation below
     if (this.explanationText) this.explanationText.destroy();
 
     this.explanationText = this.add.text(this.cameras.main.centerX, this.totalMultiplierText.y + 30,
-      `${malusLabel} x ${betLabel} = ${totalLabel}`, {
+      `${malusLabel} x ${betLabel} = ${totalLabel} `, {
       fontSize: "16px",
       color: "#888888",
       fontFamily: "serif"
@@ -803,11 +804,7 @@ export default class BettingScene extends Phaser.Scene {
     const username = this.registry.get("currentUsername") || "Player";
 
     // Save score
-    stateManager.saveScoreEntry({
-      username: username,
-      score: finalBalance,
-      date: new Date().toISOString()
-    });
+    GlobalScoreManager.submitScore(username, finalBalance);
 
     // Transition to Game Over Scene
     this.cameras.main.fadeOut(500);

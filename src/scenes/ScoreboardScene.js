@@ -6,6 +6,7 @@ import Phaser from "phaser";
 import { DESIGN_CONSTANTS } from "../config/gameConfig.js";
 import LanguageManager from "../managers/LanguageManager.js";
 import stateManager from "../managers/StateManager.js";
+import GlobalScoreManager from "../managers/GlobalScoreManager.js";
 import { formatNumber } from "../utils/helpers.js";
 
 export default class ScoreboardScene extends Phaser.Scene {
@@ -31,10 +32,13 @@ export default class ScoreboardScene extends Phaser.Scene {
     // Sakura particles (subtle background decoration)
     this.createSakuraParticles();
 
+    // Clear text elements to avoid duplicates on restart
+    this.textElements = [];
+
     // Title
     this.createTitle();
 
-    // Scoreboard content
+    // Scoreboard content - fetches from global manager
     this.createScoreboardTable();
 
     // Back button
@@ -106,25 +110,51 @@ export default class ScoreboardScene extends Phaser.Scene {
   /**
    * Create scoreboard table with top 10 scores
    */
-  createScoreboardTable() {
-    const topScores = this.stateManager.getTopScores();
+  async createScoreboardTable() {
+    const isGlobal = GlobalScoreManager.isGlobalActive();
 
-    if (topScores.length === 0) {
-      this.createEmptyMessage();
-      return;
-    }
-
-    // Table header
+    // Header
     const headerY = 200;
     const rowHeight = 60;
-
     this.createTableHeader(headerY);
 
-    // Score entries
-    topScores.forEach((entry, index) => {
-      const y = headerY + 60 + index * rowHeight;
-      this.createScoreRow(entry, index + 1, y);
-    });
+    // Show loading text
+    const loadingText = this.add.text(400, 400, this.languageManager.getText("scoreboard.loading") || "Loading...", {
+      fontSize: "24px",
+      fontFamily: "serif",
+      color: "#F4A460",
+    }).setOrigin(0.5);
+
+    try {
+      // Fetch scores (might be global or local fallback)
+      const topScores = await GlobalScoreManager.fetchTopScores();
+
+      // Remove loading text
+      loadingText.destroy();
+
+      if (topScores.length === 0) {
+        this.createEmptyMessage();
+        return;
+      }
+
+      // Add "Global" or "Local" indicator if applicable
+      const statusText = isGlobal ? "Global Records" : "Local Records Only";
+      const indicator = this.add.text(400, 160, statusText, {
+        fontSize: "14px",
+        fontFamily: "serif",
+        color: isGlobal ? "#FFD700" : "#888888",
+        fontStyle: "italic"
+      }).setOrigin(0.5);
+
+      // Score entries
+      topScores.forEach((entry, index) => {
+        const y = headerY + 60 + index * rowHeight;
+        this.createScoreRow(entry, index + 1, y);
+      });
+    } catch (error) {
+      loadingText.setText("Failed to load scores");
+      console.error(error);
+    }
   }
 
   /**
