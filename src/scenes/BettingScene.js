@@ -84,6 +84,25 @@ export default class BettingScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
+    // Small Change Username button next to name
+    const changeUserIcon = this.add.text(centerX + 200, 130, "✏️", {
+      fontSize: "20px",
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+    changeUserIcon.on('pointerdown', () => {
+      this.usernameOverlay = new UsernameInputOverlay(this, (newUsername) => {
+        this.registry.set("currentUsername", newUsername);
+        stateManager.saveUsername(newUsername);
+        this.usernameText.setText(`${this.languageManager.getText("betting.player")} : ${newUsername}`);
+        this.usernameOverlay = null;
+      });
+      this.usernameOverlay.show();
+    });
+
+    // Hover effect for edit icon
+    changeUserIcon.on('pointerover', () => changeUserIcon.setScale(1.2));
+    changeUserIcon.on('pointerout', () => changeUserIcon.setScale(1));
+
     // Balance display
     this.balanceText = this.add
       .text(centerX, 165, "", {
@@ -108,28 +127,47 @@ export default class BettingScene extends Phaser.Scene {
       this.registry.set("currentMalusConfig", this.currentMalusConfig);
     }
 
+    // --- STEP 1: MALUS ---
+    const step1Y = 240;
+    this.add.text(centerX, step1Y, "STEP 1: MALUS COMBO", {
+      fontSize: "20px",
+      color: "#888888",
+      fontFamily: "serif",
+      fontStyle: "bold"
+    }).setOrigin(0.5);
+
     // Create malus display panel
-    this.createMalusPanel(centerX, 340);
+    this.createMalusPanel(centerX, step1Y + 90);
 
-    // Create reroll button
-    this.createRerollButton(centerX, 520);
+    // Create reroll button (part of Step 1)
+    this.createRerollButton(centerX, step1Y + 240);
 
-    // Betting section title
-    this.add
-      .text(centerX, 600, this.languageManager.getText("betting.title"), {
-        fontSize: "28px",
-        color: "#F4A460",
-        fontFamily: "serif",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5);
+
+    // --- STEP 2: BET ---
+    const step2Y = 580;
+    this.add.text(centerX, step2Y, "STEP 2: CHOOSE BET", {
+      fontSize: "20px",
+      color: "#888888",
+      fontFamily: "serif",
+      fontStyle: "bold"
+    }).setOrigin(0.5);
 
     // Betting options
-    this.createBettingOptions(centerX, 680);
+    this.createBettingOptions(centerX, step2Y + 60);
+
+
+    // --- STEP 3: TOTAL ---
+    const step3Y = 720;
+    this.add.text(centerX, step3Y, "STEP 3: TOTAL MULTIPLIER", {
+      fontSize: "20px",
+      color: "#888888",
+      fontFamily: "serif",
+      fontStyle: "bold"
+    }).setOrigin(0.5);
 
     // Total Multiplier Calculation Display
-    this.totalMultiplierText = this.add.text(centerX, 750, "", {
-      fontSize: "18px",
+    this.totalMultiplierText = this.add.text(centerX, step3Y + 50, "", {
+      fontSize: "24px",
       color: "#FFFFFF",
       fontFamily: "serif",
       fontStyle: "bold",
@@ -139,12 +177,12 @@ export default class BettingScene extends Phaser.Scene {
 
     // Start button (Accept & Bet)
     const startButton = this.add
-      .rectangle(centerX, 800, 320, 60, DESIGN_CONSTANTS.COLORS.ACCENT)
+      .rectangle(centerX, 880, 320, 60, DESIGN_CONSTANTS.COLORS.ACCENT)
       .setInteractive({ useHandCursor: true });
     startButton.setStrokeStyle(3, DESIGN_CONSTANTS.COLORS.GOLD);
 
     this.startButtonText = this.add
-      .text(centerX, 800, this.languageManager.getText("malus.accept"), {
+      .text(centerX, 880, this.languageManager.getText("malus.accept"), {
         fontSize: "26px",
         color: "#FFFFFF",
         fontFamily: "serif",
@@ -178,36 +216,10 @@ export default class BettingScene extends Phaser.Scene {
       this.startGameWithMalus();
     });
 
-    // Change username button
-    const changeUsernameBtn = this.add
-      .rectangle(centerX, 880, 250, 45, DESIGN_CONSTANTS.COLORS.PRIMARY)
-      .setInteractive({ useHandCursor: true });
+    // End Session / Cash Out Button (Now visible at y=960)
+    // Replaces the old "Change Username" button location
+    this.createEndSessionButton(centerX, 960);
 
-    this.add
-      .text(centerX, 880, this.languageManager.getText("betting.changeUsername"), {
-        fontSize: "18px",
-        color: "#FFFFFF",
-        fontFamily: "serif",
-      })
-      .setOrigin(0.5);
-
-    changeUsernameBtn.on("pointerover", () => {
-      changeUsernameBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
-    });
-
-    changeUsernameBtn.on("pointerout", () => {
-      changeUsernameBtn.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY);
-    });
-
-    changeUsernameBtn.on("pointerdown", () => {
-      this.usernameOverlay = new UsernameInputOverlay(this, (newUsername) => {
-        this.registry.set("currentUsername", newUsername);
-        stateManager.saveUsername(newUsername);
-        this.usernameText.setText(`${this.languageManager.getText("betting.player")} : ${newUsername}`);
-        this.usernameOverlay = null;
-      });
-      this.usernameOverlay.show();
-    });
 
     // Back button
     this.backButton = this.add
@@ -231,7 +243,7 @@ export default class BettingScene extends Phaser.Scene {
    */
   createMalusPanel(centerX, centerY) {
     // Panel background
-    this.malusPanel = this.add.rectangle(centerX, centerY, 700, 260, 0x1a1a2e, 0.9);
+    this.malusPanel = this.add.rectangle(centerX, centerY, 700, 220, 0x1a1a2e, 0.9);
     this.malusPanel.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.ACCENT);
 
     // Malus container for easy refresh
@@ -562,9 +574,20 @@ export default class BettingScene extends Phaser.Scene {
     const betLabel = this.languageManager.getText("betting.betMultiplierLabel");
     const totalLabel = this.languageManager.getText("malus.totalMultiplierLabel");
 
+    // Format: (Malus xA) * (Bet xB) = TOTAL xC
     this.totalMultiplierText.setText(
-      `${malusLabel} (x${malusMultiplier.toFixed(2)}) * ${betLabel} (x${betMultiplier.toFixed(0)}) = ${totalLabel} (x${totalMultiplier.toFixed(2)})`
+      `(${malusMultiplier.toFixed(2)})  x  (${betMultiplier.toFixed(0)})  =  x${totalMultiplier.toFixed(2)}`
     );
+
+    // Contextual explanation below
+    if (this.explanationText) this.explanationText.destroy();
+
+    this.explanationText = this.add.text(this.cameras.main.centerX, this.totalMultiplierText.y + 30,
+      `${malusLabel} x ${betLabel} = ${totalLabel}`, {
+      fontSize: "16px",
+      color: "#888888",
+      fontFamily: "serif"
+    }).setOrigin(0.5);
   }
 
   updateBalanceDisplay() {
@@ -599,6 +622,69 @@ export default class BettingScene extends Phaser.Scene {
       alpha: { start: 0.8, end: 0.3 },
       rotate: { start: 0, end: 360 },
       frequency: 300,
+    });
+  }
+
+  /**
+   * Create the button to end the session and cash out
+   */
+  createEndSessionButton(x, y) {
+    const button = this.add.container(x, y);
+
+    const bg = this.add.rectangle(0, 0, 300, 50, 0x8B0000); // Dark red
+    bg.setStrokeStyle(2, 0xFF4500); // Orange-red stroke
+    bg.setInteractive({ useHandCursor: true });
+
+    const text = this.add.text(0, 0, "⚠️ CASH OUT & END GAME", {
+      fontSize: "18px",
+      color: "#FFFFFF",
+      fontFamily: "serif",
+      fontStyle: "bold"
+    }).setOrigin(0.5);
+
+    button.add([bg, text]);
+
+    bg.on('pointerover', () => {
+      bg.setFillStyle(0xFF0000); // Bright red
+      button.setScale(1.05);
+    });
+
+    bg.on('pointerout', () => {
+      bg.setFillStyle(0x8B0000);
+      button.setScale(1);
+    });
+
+    bg.on('pointerdown', () => {
+      this.endSession();
+    });
+  }
+
+  /**
+   * End the session, save score, and go to Game Over
+   */
+  endSession() {
+    const finalBalance = this.budgetManager.getBalance();
+    const username = this.registry.get("currentUsername") || "Player";
+
+    // Save score
+    stateManager.saveScoreEntry({
+      username: username,
+      score: finalBalance,
+      date: new Date().toISOString()
+    });
+
+    // Transition to Game Over Scene
+    this.cameras.main.fadeOut(500);
+    this.time.delayedCall(500, () => {
+      this.scene.start("GameOverScene", {
+        score: 0, // No score from "last game"
+        winnings: 0,
+        balance: finalBalance,
+        balanceMax: finalBalance, // Use final balance as max for record
+        username: username,
+        cycleEnded: true,
+        isCashOut: true
+      });
     });
   }
 
