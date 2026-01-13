@@ -25,12 +25,12 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     const spriteHalfSize = 12 * scale;
     const bodyOffset = spriteHalfSize - hitboxRadius;
     this.setCircle(hitboxRadius, bodyOffset, bodyOffset);
-    
+
     this.setBounce(DESIGN_CONSTANTS.BOUNCE_FACTOR);
     this.setCollideWorldBounds(false);
-    
+
     // Limit max velocity to prevent collision tunneling through pins
-    this.body.setMaxVelocity(300, 400);
+    this.body.setMaxVelocity(180, 500);
     this.setTint(DESIGN_CONSTANTS.COLORS.BALL);
 
     // Trail system - get settings from FeatureManager (with fallback defaults)
@@ -39,11 +39,11 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     this.trailOpacity = FeatureManager.getParameter("ballTrail", "opacity") || 0.8;
     this.trailColor = DESIGN_CONSTANTS.COLORS.GOLD; // Use gold for better visibility
     this.positionHistory = [];
-    
+
     // Check if trail is enabled (default to true if not found)
     const trailFeature = FeatureManager.isEnabled("ballTrail");
     this.trailEnabled = trailFeature !== false; // true if enabled or undefined
-    
+
     // Graphics object for drawing the trail - each ball has its own
     this.trailGraphics = scene.add.graphics();
     this.trailGraphics.setDepth(5); // Above background, below UI
@@ -51,7 +51,7 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     // Add glow effect
     this.glowCircle = scene.add.circle(x, y, DESIGN_CONSTANTS.BALL_RADIUS * 2, DESIGN_CONSTANTS.COLORS.BALL, 0.3);
     this.glowCircle.setBlendMode('ADD');
-    
+
     // Pulsing glow animation
     scene.tweens.add({
       targets: this.glowCircle,
@@ -74,7 +74,7 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     this.isActive = true;
     this.pinHitCount = 0;
     this.lastHitPin = null; // Track the last pin hit to prevent double-counting
-    
+
     // Stuck ball detection - track collision history
     this.collisionHistory = []; // Array of pin references
     this.collisionHistoryLimit = 100; // Check last 100 collisions
@@ -103,20 +103,20 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
   hitPin(pin) {
     // Record collision for stuck detection (even same pin)
     this.recordPinCollision(pin);
-    
+
     // Only count if it's a different pin than the last one hit
     if (pin === this.lastHitPin) {
       return false; // Same pin, don't increment
     }
-    
+
     this.lastHitPin = pin;
     this.pinHitCount++;
-    
+
     // Update combo display for every pin hit
     const combo = this.getCombo();
     this.comboText.setText(`x${combo}`);
     this.comboText.setVisible(true);
-    
+
     // Pulse effect on combo text
     this.scene.tweens.add({
       targets: this.comboText,
@@ -124,7 +124,7 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
       duration: 200,
       ease: 'Back.easeOut',
     });
-    
+
     return true;
   }
 
@@ -141,7 +141,7 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
    */
   recordPinCollision(pin) {
     this.collisionHistory.push(pin);
-    
+
     // Keep only the last N collisions
     if (this.collisionHistory.length > this.collisionHistoryLimit) {
       this.collisionHistory.shift();
@@ -157,10 +157,10 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     if (this.collisionHistory.length < this.collisionHistoryLimit) {
       return false;
     }
-    
+
     // Count unique pins in collision history
     const uniquePins = new Set(this.collisionHistory);
-    
+
     // If only hitting 2 or fewer pins in last 100 collisions, ball is stuck
     return uniquePins.size <= this.maxUniquePinsForStuck;
   }
@@ -170,20 +170,20 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
    */
   preUpdate(time, delta) {
     super.preUpdate(time, delta);
-    
+
     // Update position history for trail
     if (this.active && this.trailEnabled) {
       this.positionHistory.unshift({ x: this.x, y: this.y });
-      
+
       // Limit trail length
       if (this.positionHistory.length > this.trailLength) {
         this.positionHistory.pop();
       }
-      
+
       // Draw the trail
       this.drawTrail();
     }
-    
+
     if (this.glowCircle && this.active) {
       this.glowCircle.setPosition(this.x, this.y);
     }
@@ -197,25 +197,25 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
    */
   drawTrail() {
     if (!this.trailGraphics || this.positionHistory.length < 2) return;
-    
+
     this.trailGraphics.clear();
-    
+
     const points = this.positionHistory;
-    
+
     // Draw a single smooth path using quadratic bezier curves
     // This creates a continuous smooth line instead of segmented circles
     for (let i = 0; i < points.length - 1; i++) {
       const t = i / (points.length - 1); // 0 to 1
       const alpha = this.trailOpacity * (1 - t); // Fade out
       const thickness = Math.max(0.5, this.trailThickness * (1 - t * 0.5)); // Thin out slightly
-      
+
       if (alpha <= 0.01) continue;
-      
+
       this.trailGraphics.lineStyle(thickness, this.trailColor, alpha);
-      
+
       const p0 = points[i];
       const p1 = points[i + 1];
-      
+
       // Simple line segment for crisp thin trail
       this.trailGraphics.beginPath();
       this.trailGraphics.moveTo(p0.x, p0.y);

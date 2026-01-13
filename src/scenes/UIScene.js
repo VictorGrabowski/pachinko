@@ -90,7 +90,7 @@ export default class UIScene extends Phaser.Scene {
 
     // CASH OUT Button - Top left, more discreet
     const cashOutX = 100;
-    const cashOutY = 200;
+    const cashOutY = 230;
 
     this.cashOutButton = this.add.rectangle(
       cashOutX, cashOutY,

@@ -84,10 +84,10 @@ export default class CollisionHandler {
 
         // Only count hit if it's a different pin than the last one
         const wasNewPin = ball.hitPin(pin);
-        
+
         // Visual feedback on pin (always show)
         pin.onHit();
-        
+
         // Audio and combo effects only if it's a new pin
         if (wasNewPin) {
             if (this.audioSystem) {
@@ -136,8 +136,8 @@ export default class CollisionHandler {
         ball.setActive(false);
 
         const combo = ball.getCombo();
-        const multiplier = 1 + combo * 0.2;
-        const points = Math.floor(bucket.config.value * multiplier);
+        const multiplier = Math.max(1, combo); // Le combo multiplie directement le score
+        const points = Math.floor((bucket.config.value * multiplier) / 10); // Divisé par 10
 
         // Visual feedback
         this.createBucketHitEffects(ball, bucket);

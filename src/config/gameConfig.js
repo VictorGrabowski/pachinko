@@ -32,7 +32,7 @@ export const DESIGN_CONSTANTS = {
   },
   BALL_RADIUS: 12,
   PIN_SPACING: 60,
-  BOUNCE_FACTOR: 0.8,
+  BOUNCE_FACTOR: 0.55,
   MAX_LIVES: 5,
   COMBO_THRESHOLD: 3,
   MA_INTERVAL: 150, // Silence interval (ma concept)
@@ -40,13 +40,13 @@ export const DESIGN_CONSTANTS = {
 
 // Bucket configuration with Japanese aesthetic (大中小 pattern)
 export const BUCKET_CONFIG = [
-  { value: 10, label: "小", color: 0x4a90e2 },
-  { value: 30, label: "中", color: 0x7b68ee },
-  { value: 50, label: "大", color: 0xff6b35 },
-  { value: 100, label: "特", color: 0xffd700 },
-  { value: 50, label: "大", color: 0xff6b35 },
-  { value: 30, label: "中", color: 0x7b68ee },
-  { value: 10, label: "小", color: 0x4a90e2 },
+  { value: 1, label: "小", color: 0x4a90e2 },
+  { value: 3, label: "中", color: 0x7b68ee },
+  { value: 5, label: "大", color: 0xff6b35 },
+  { value: 10, label: "特", color: 0xffd700 },
+  { value: 5, label: "大", color: 0xff6b35 },
+  { value: 3, label: "中", color: 0x7b68ee },
+  { value: 1, label: "小", color: 0x4a90e2 },
 ];
 
 // Traductions du jeu - Format multilingue
