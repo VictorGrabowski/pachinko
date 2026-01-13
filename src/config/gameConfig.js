@@ -233,6 +233,8 @@ export const TRANSLATIONS = {
       nearMiss: "SI PRÈS !",
     },
     achievements: {
+      title: "Succès & Trophées",
+      shelf: "Galerie de Trophées",
       unlocked: "Succès débloqué !",
       comboStarter: "Combo Débutant",
       comboPro: "Combo Pro",
@@ -464,6 +466,8 @@ export const TRANSLATIONS = {
       nearMiss: "SO CLOSE!",
     },
     achievements: {
+      title: "Achievements & Trophies",
+      shelf: "Trophy Gallery",
       unlocked: "Achievement Unlocked!",
       comboStarter: "Combo Starter",
       comboPro: "Combo Pro",

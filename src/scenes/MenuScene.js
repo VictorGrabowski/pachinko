@@ -27,6 +27,7 @@ export default class MenuScene extends Phaser.Scene {
     this.startButton = null;
     this.settingsButton = null;
     this.scoreboardButton = null;
+    this.achievementsButton = null;
     this.tutorialButton = null;
   }
 
@@ -138,6 +139,20 @@ export default class MenuScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
+    // Achievements button
+    this.achievementsButton = this.add
+      .rectangle(centerX, 740, 400, 60, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.3)
+      .setInteractive({ useHandCursor: true });
+    this.achievementsButton.setStrokeStyle(1, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.8);
+
+    const achievementsText = this.add
+      .text(centerX, 740, this.languageManager.getText('achievements.title') || "Achievements", {
+        fontSize: "24px",
+        color: "#F4A460",
+        fontFamily: "serif",
+      })
+      .setOrigin(0.5);
+
     // Start button interactions
     this.startButton.on("pointerover", () => {
       this.startButton.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
@@ -219,14 +234,42 @@ export default class MenuScene extends Phaser.Scene {
       });
     });
 
+    // Achievements button interactions
+    this.achievementsButton.on("pointerover", () => {
+      this.achievementsButton.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
+      this.tweens.add({
+        targets: this.achievementsButton,
+        scaleX: 1.05,
+        scaleY: 1.05,
+        duration: 150,
+      });
+    });
+
+    this.achievementsButton.on("pointerout", () => {
+      this.achievementsButton.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.3);
+      this.tweens.add({
+        targets: this.achievementsButton,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 150,
+      });
+    });
+
+    this.achievementsButton.on("pointerdown", () => {
+      this.cameras.main.fadeOut(500);
+      this.time.delayedCall(500, () => {
+        this.scene.start("AchievementsScene");
+      });
+    });
+
     // Tutorial button
     this.tutorialButton = this.add
-      .rectangle(centerX, 740, 400, 60, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.3)
+      .rectangle(centerX, 815, 400, 60, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.3)
       .setInteractive({ useHandCursor: true });
     this.tutorialButton.setStrokeStyle(1, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.8);
 
     const tutorialText = this.add
-      .text(centerX, 740, this.languageManager.getText('tutorial.menuButton'), {
+      .text(centerX, 815, this.languageManager.getText('tutorial.menuButton'), {
         fontSize: "24px",
         color: "#F4A460",
         fontFamily: "serif",

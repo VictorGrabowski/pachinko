@@ -8,6 +8,7 @@ import GameScene from './scenes/GameScene.js';
 import UIScene from './scenes/UIScene.js';
 import GameOverScene from './scenes/GameOverScene.js';
 import ScoreboardScene from './scenes/ScoreboardScene.js';
+import AchievementsScene from './scenes/AchievementsScene.js';
 
 // Initialiser la palette sauvegardée
 initPalette();
@@ -21,7 +22,8 @@ GAME_CONFIG.scene = [
   GameScene,
   UIScene,
   GameOverScene,
-  ScoreboardScene
+  ScoreboardScene,
+  AchievementsScene
 ];
 
 // Initialize the Phaser game
