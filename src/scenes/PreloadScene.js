@@ -15,6 +15,18 @@ export default class PreloadScene extends Phaser.Scene {
     // Load audio assets (relative paths for Electron compatibility)
     this.load.audio("coin", "assets/coin.mp3");
     this.load.audio("bgMusic", "assets/bgMusic.mp3");
+
+    // Load tutorial images
+    this.load.image("tutorial_targets", "assets/tutorial/tutorial_targets.png");
+    this.load.image("tutorial_configuration", "assets/tutorial/tutorial_configuration.png");
+    this.load.image("tutorial_launch", "assets/tutorial/tutorial_launch.png");
+    this.load.image("tutorial_yokais", "assets/tutorial/tutorial_yokais.png");
+
+    // Load yokai images for tutorial page 4
+    this.load.image("yokai_1", "assets/tutorial/yokai_1.png");
+    this.load.image("yokai_2", "assets/tutorial/yokai_2.png");
+    this.load.image("yokai_3", "assets/tutorial/yokai_3.png");
+    this.load.image("yokai_4", "assets/tutorial/yokai_4.png");
   }
 
   create() {

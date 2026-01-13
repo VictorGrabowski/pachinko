@@ -55,13 +55,13 @@ export default class GameScene extends Phaser.Scene {
    */
   applyMalusConfiguration() {
     const activeMaluses = this.registry.get("activeMaluses") || [];
-    
+
     // First, disable all malus-related features to start fresh
     FeatureManager.setEnabled("creature", false);
     FeatureManager.setEnabled("movingPins", false);
     FeatureManager.setEnabled("hardcore_launch", false);
     FeatureManager.setParameter("pins", "randomSize", false);
-    
+
     // Apply each selected malus
     for (const malus of activeMaluses) {
       if (malus.featureId === "creature") {
@@ -83,7 +83,7 @@ export default class GameScene extends Phaser.Scene {
   create() {
     // Configure physics world for better collision detection (prevents tunneling)
     this.physics.world.OVERLAP_BIAS = 16;
-    
+
     this.budgetManager = this.registry.get("budgetManager");
     if (!this.budgetManager) {
       this.budgetManager = new BudgetManager({
@@ -437,6 +437,108 @@ export default class GameScene extends Phaser.Scene {
 
     // Initially hidden until mouse enters start zone
     this.ballPlaceholder.setVisible(false);
+
+    // Create click zone indicator
+    this.createClickZoneIndicator();
+  }
+
+  /**
+   * Create click zone visual indicator with cursor hint
+   */
+  createClickZoneIndicator() {
+    // Light colored zone background
+    const zoneX = this.startZone.x + this.startZone.width / 2;
+    const zoneY = this.startZone.y + this.startZone.height / 2;
+
+    this.clickZoneBg = this.add.rectangle(
+      zoneX,
+      zoneY,
+      this.startZone.width - 10,
+      this.startZone.height - 10,
+      DESIGN_CONSTANTS.COLORS.GOLD,
+      0.08
+    );
+    this.clickZoneBg.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.GOLD, 0.15);
+
+    // Container for click indicator (cursor + clic bars)
+    this.clickIndicator = this.add.container(400, 85);
+    this.clickIndicator.setVisible(false);
+    this.clickIndicator.setAlpha(0.9);
+
+    // Cursor icon (pointer arrow)
+    const cursorGraphics = this.add.graphics();
+    cursorGraphics.fillStyle(0xFFFFFF, 1);
+    cursorGraphics.beginPath();
+    // Arrow pointer shape
+    cursorGraphics.moveTo(0, 0);
+    cursorGraphics.lineTo(0, 20);
+    cursorGraphics.lineTo(5, 16);
+    cursorGraphics.lineTo(8, 24);
+    cursorGraphics.lineTo(12, 22);
+    cursorGraphics.lineTo(9, 14);
+    cursorGraphics.lineTo(14, 14);
+    cursorGraphics.closePath();
+    cursorGraphics.fillPath();
+    cursorGraphics.lineStyle(1, 0x000000, 0.8);
+    cursorGraphics.strokePath();
+    this.clickIndicator.add(cursorGraphics);
+
+    // "CLIC!" text bubble
+    const clicText = this.add.text(22, 8, "CLIC!", {
+      fontSize: "14px",
+      fontFamily: "Arial",
+      color: "#FFD700",
+      fontStyle: "bold",
+      stroke: "#000000",
+      strokeThickness: 2,
+    });
+    this.clickIndicator.add(clicText);
+
+    // Click effect bars (3 bars radiating from click point)
+    this.clickBars = [];
+    const barAngles = [-30, 0, 30]; // Angles in degrees
+    const barLength = 12;
+    const barStartDistance = 18;
+
+    barAngles.forEach((angle, index) => {
+      const rad = Phaser.Math.DegToRad(angle - 45); // Offset to point from cursor tip
+      const startX = 7 + Math.cos(rad) * barStartDistance;
+      const startY = 7 + Math.sin(rad) * barStartDistance;
+      const endX = startX + Math.cos(rad) * barLength;
+      const endY = startY + Math.sin(rad) * barLength;
+
+      const bar = this.add.graphics();
+      bar.lineStyle(3, DESIGN_CONSTANTS.COLORS.GOLD, 0.9);
+      bar.beginPath();
+      bar.moveTo(startX, startY);
+      bar.lineTo(endX, endY);
+      bar.strokePath();
+
+      this.clickBars.push(bar);
+      this.clickIndicator.add(bar);
+    });
+
+    // Animate click bars with "pop" effect
+    this.tweens.add({
+      targets: this.clickBars,
+      alpha: { from: 0.3, to: 1 },
+      scaleX: { from: 0.5, to: 1.2 },
+      scaleY: { from: 0.5, to: 1.2 },
+      duration: 600,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.inOut',
+    });
+
+    // Subtle bounce animation for entire indicator
+    this.tweens.add({
+      targets: this.clickIndicator,
+      y: 80,
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.inOut',
+    });
   }
 
   /**
@@ -583,7 +685,7 @@ export default class GameScene extends Phaser.Scene {
     } else {
       ball.launch();
     }
-    
+
     // Emit ball state change to disable CASH OUT button
     this.scene.get('UIScene').events.emit('ballStateChange', true);
 
@@ -617,10 +719,10 @@ export default class GameScene extends Phaser.Scene {
 
     // Only count hit if it's a different pin than the last one
     const wasNewPin = ball.hitPin(pin);
-    
+
     // Visual feedback on pin (always show)
     pin.onHit();
-    
+
     // Audio and combo effects only if it's a new pin
     if (wasNewPin) {
       if (this.audioSystem) {
@@ -744,7 +846,7 @@ export default class GameScene extends Phaser.Scene {
       ball.destroy();
       this.balls = this.balls.filter((b) => b !== ball);
       this.activeBalls--;
-      
+
       // Re-enable CASH OUT button if no more active balls
       if (this.activeBalls === 0) {
         this.scene.get('UIScene').events.emit('ballStateChange', false);
@@ -855,7 +957,7 @@ export default class GameScene extends Phaser.Scene {
       ball.destroy();
       this.balls = this.balls.filter((b) => b !== ball);
       this.activeBalls--;
-      
+
       // Re-enable CASH OUT button if no more active balls
       if (this.activeBalls === 0) {
         this.scene.get('UIScene').events.emit('ballStateChange', false);
@@ -927,20 +1029,20 @@ export default class GameScene extends Phaser.Scene {
         ball.destroy();
         this.activeBalls--;
         this.lives--;
-        
+
         // Re-enable CASH OUT button if no more active balls
         if (this.activeBalls === 0) {
           this.scene.get('UIScene').events.emit('ballStateChange', false);
         }
-        
+
         this.events.emit('livesUpdate', this.lives);
-        
+
         if (this.lives <= 0) {
           this.gameOver();
         }
       }
     });
-    
+
     // Remove destroyed balls from array
     this.balls = this.balls.filter((ball) => ball.active);
 
@@ -951,7 +1053,7 @@ export default class GameScene extends Phaser.Scene {
         ball.destroy();
         this.activeBalls--;
         this.lives--;
-        
+
         // Re-enable CASH OUT button if no more active balls
         if (this.activeBalls === 0) {
           this.scene.get('UIScene').events.emit('ballStateChange', false);

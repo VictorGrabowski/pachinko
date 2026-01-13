@@ -64,17 +64,28 @@ export default class TutorialOverlay {
         }).setOrigin(0.5);
         this.container.add(this.pageTitleText);
 
-        // Image Placeholder
-        this.imagePlaceholder = this.scene.add.rectangle(panelX, panelY - 60, 400, 220, 0x000000, 0.3);
-        this.imagePlaceholder.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.5);
-        this.container.add(this.imagePlaceholder);
+        // Tutorial Image
+        this.tutorialImage = this.scene.add.image(panelX, panelY - 60, "tutorial_targets");
+        this.tutorialImage.setDisplaySize(400, 220);
+        this.container.add(this.tutorialImage);
 
-        this.imageText = this.scene.add.text(panelX, panelY - 60, "", {
-            fontSize: "16px",
-            color: "#666666",
-            fontStyle: "italic"
-        }).setOrigin(0.5);
-        this.container.add(this.imageText);
+        // Yokai Images Container (for page 4)
+        this.yokaiContainer = this.scene.add.container(panelX, panelY - 60);
+        this.yokaiImages = [];
+        const yokaiSize = 80;
+        const yokaiSpacing = 20;
+        const totalWidth = 4 * yokaiSize + 3 * yokaiSpacing;
+        const startX = -totalWidth / 2 + yokaiSize / 2;
+
+        for (let i = 0; i < 4; i++) {
+            const x = startX + i * (yokaiSize + yokaiSpacing);
+            const yokaiImg = this.scene.add.image(x, 0, `yokai_${i + 1}`);
+            yokaiImg.setDisplaySize(yokaiSize, yokaiSize);
+            this.yokaiImages.push(yokaiImg);
+            this.yokaiContainer.add(yokaiImg);
+        }
+        this.yokaiContainer.setVisible(false);
+        this.container.add(this.yokaiContainer);
 
         // Content Body
         this.contentBodyText = this.scene.add.text(panelX, panelY + 120, "", {
@@ -215,21 +226,26 @@ export default class TutorialOverlay {
         this.contentBodyText.setText(this.languageManager.getText(`${pageKey}_content`));
         this.pageIndicator.setText(`${this.currentPage} / ${this.totalPages}`);
 
-        // Update Image Placeholder Text (Temporary until real assets)
-        const placeholderTexts = [
-            "Aperçu: Cibles & Score",
-            "Aperçu: Configuration Aléatoire",
-            "Aperçu: Lancer & Rebonds",
-            "Aperçu: Yokais & Mode Hardcore"
-        ];
-        this.imageText.setText(placeholderTexts[this.currentPage - 1]);
+        // Update Tutorial Image based on current page
+        if (this.currentPage === 4) {
+            // Show yokai images grid on page 4
+            this.tutorialImage.setVisible(false);
+            this.yokaiContainer.setVisible(true);
+        } else {
+            // Show single tutorial image for other pages
+            this.tutorialImage.setVisible(true);
+            this.yokaiContainer.setVisible(false);
+            const imageKeys = [
+                "tutorial_targets",
+                "tutorial_configuration",
+                "tutorial_launch"
+            ];
+            this.tutorialImage.setTexture(imageKeys[this.currentPage - 1]);
+        }
 
         // Update Buttons State
         this.prevBtn.setEnabled(this.currentPage > 1);
         this.nextBtn.setEnabled(this.currentPage < this.totalPages);
-
-        // If on last page, change Next to Close potentially? Or just disable it.
-        // For now, simple logic is fine.
     }
 
     hide() {
