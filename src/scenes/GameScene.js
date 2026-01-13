@@ -462,7 +462,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Container for click indicator (cursor + clic bars)
     this.clickIndicator = this.add.container(400, 85);
-    this.clickIndicator.setVisible(false);
+    this.clickIndicator.setVisible(false); // Only visible when hovering over zone
     this.clickIndicator.setAlpha(0.9);
 
     // Cursor icon (pointer arrow)
@@ -655,7 +655,19 @@ export default class GameScene extends Phaser.Scene {
 
     // Show placeholder only if cursor is near or in the start zone
     const isNearStartZone = pointer.y < this.startZone.y + this.startZone.height + 50;
-    this.ballPlaceholder.setVisible(isNearStartZone && this.lives > 0);
+    const showPlaceholder = isNearStartZone && this.lives > 0;
+    this.ballPlaceholder.setVisible(showPlaceholder);
+
+    // Sync angle arrow visibility with placeholder in hardcore mode
+    if (this.hardcoreMode) {
+      this.scene.get('UIScene').events.emit('hardcoreArrowVisibility', showPlaceholder);
+    }
+
+    // Show/hide click indicator (opposite of placeholder - show when NOT hovering to guide user)
+    if (this.clickIndicator) {
+      // Hide click indicator when placeholder is visible (user is in the zone)
+      this.clickIndicator.setVisible(!showPlaceholder && this.lives > 0);
+    }
   }
 
   /**

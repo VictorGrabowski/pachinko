@@ -91,7 +91,7 @@ export default class UIScene extends Phaser.Scene {
     // CASH OUT Button - Top left, more discreet
     const cashOutX = 100;
     const cashOutY = 200;
-    
+
     this.cashOutButton = this.add.rectangle(
       cashOutX, cashOutY,
       140, 40,
@@ -158,13 +158,14 @@ export default class UIScene extends Phaser.Scene {
     this.gameScene.events.on("livesUpdate", this.updateLives, this);
     // ballStateChange is emitted to UIScene.events from GameScene
     this.events.on("ballStateChange", this.onBallStateChange, this);
-    
+
     // Listen for hardcore mode events
     if (FeatureManager.isEnabled("hardcore_launch")) {
       this.events.on("hardcoreSizeUpdate", this.updateSizeIndicator, this);
       this.events.on("hardcoreAngleUpdate", this.updateAngleIndicator, this);
       this.events.on("hardcoreForceUpdate", this.updateForceIndicator, this);
       this.events.on("hardcorePlaceholderMove", this.updateAngleArrowPosition, this);
+      this.events.on("hardcoreArrowVisibility", this.updateAngleArrowVisibility, this);
     }
   }
 
@@ -196,7 +197,7 @@ export default class UIScene extends Phaser.Scene {
 
     // Shake animation on life lost
     this.cameras.main.shake(200, 0.005);
-    
+
     // Update cash out button state (requires at least 1 life)
     this.updateCashOutButtonState();
   }
@@ -222,7 +223,7 @@ export default class UIScene extends Phaser.Scene {
   updateCashOutButtonState() {
     // Cash out enabled only if: at least 1 life AND no active balls
     this.cashOutEnabled = this.currentLives >= 1 && !this.hasActiveBalls;
-    
+
     if (this.cashOutEnabled) {
       // Enable button - full opacity and interactive cursor
       this.cashOutButton.setAlpha(1);
@@ -265,9 +266,11 @@ export default class UIScene extends Phaser.Scene {
     // ANGLE ARROW (Flèche qui se balance) - positionnée au placeholder
     // Arrow pivot point (base) - will move with placeholder
     this.angleArrowBase = this.add.circle(centerX, 100, 4, DESIGN_CONSTANTS.COLORS.GOLD);
+    this.angleArrowBase.setVisible(false); // Hidden initially, shown with placeholder
 
     // Arrow line (graphics)
     this.angleArrow = this.add.graphics();
+    this.angleArrow.setVisible(false); // Hidden initially, shown with placeholder
     this.angleArrowAngle = 0; // Current angle in degrees
     this.angleArrowX = centerX; // Store position
     this.angleArrowY = 100;
@@ -290,42 +293,42 @@ export default class UIScene extends Phaser.Scene {
     if (!this.angleArrow) return;
 
     this.angleArrowAngle = angleDegrees;
-    
+
     // Clear and redraw arrow
     this.angleArrow.clear();
-    
+
     // Calculate arrow dimensions based on force percentage (scales with force)
     const forceFactor = (this.angleArrowForcePercent || 0) / 100;
-    const arrowLength = HARDCORE_LAUNCH.ARROW_LENGTH_MIN + 
+    const arrowLength = HARDCORE_LAUNCH.ARROW_LENGTH_MIN +
       (HARDCORE_LAUNCH.ARROW_LENGTH_MAX - HARDCORE_LAUNCH.ARROW_LENGTH_MIN) * forceFactor;
-    const lineWidth = HARDCORE_LAUNCH.ARROW_WIDTH_MIN + 
+    const lineWidth = HARDCORE_LAUNCH.ARROW_WIDTH_MIN +
       (HARDCORE_LAUNCH.ARROW_WIDTH_MAX - HARDCORE_LAUNCH.ARROW_WIDTH_MIN) * forceFactor;
-    const headSize = HARDCORE_LAUNCH.ARROW_HEAD_MIN + 
+    const headSize = HARDCORE_LAUNCH.ARROW_HEAD_MIN +
       (HARDCORE_LAUNCH.ARROW_HEAD_MAX - HARDCORE_LAUNCH.ARROW_HEAD_MIN) * forceFactor;
-    
+
     // Add 90° so that 0° points down, negative to invert left/right
     const angleRad = Phaser.Math.DegToRad(-angleDegrees + 90);
-    
+
     // Use stored position (updated by placeholder move)
     const baseX = this.angleArrowX;
     const baseY = this.angleArrowY;
-    
+
     // Arrow line - use cos/sin for proper rotation
     const endX = baseX + Math.cos(angleRad) * arrowLength;
     const endY = baseY + Math.sin(angleRad) * arrowLength;
-    
+
     // Opacity also scales slightly with force (0.6 to 1.0)
     const opacity = 0.6 + 0.4 * forceFactor;
-    
+
     this.angleArrow.lineStyle(lineWidth, DESIGN_CONSTANTS.COLORS.PRIMARY, opacity);
     this.angleArrow.beginPath();
     this.angleArrow.moveTo(baseX, baseY);
     this.angleArrow.lineTo(endX, endY);
     this.angleArrow.strokePath();
-    
+
     // Arrow head (triangle) - size scales with force
     const perpAngle = angleRad + Math.PI / 2;
-    
+
     this.angleArrow.fillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, opacity);
     this.angleArrow.beginPath();
     this.angleArrow.moveTo(endX, endY);
@@ -339,7 +342,7 @@ export default class UIScene extends Phaser.Scene {
     );
     this.angleArrow.closePath();
     this.angleArrow.fillPath();
-    
+
     // Update base circle position
     if (this.angleArrowBase) {
       this.angleArrowBase.setPosition(baseX, baseY);
@@ -364,6 +367,18 @@ export default class UIScene extends Phaser.Scene {
   }
 
   /**
+   * Update angle arrow visibility (sync with placeholder)
+   */
+  updateAngleArrowVisibility(visible) {
+    if (this.angleArrow) {
+      this.angleArrow.setVisible(visible);
+    }
+    if (this.angleArrowBase) {
+      this.angleArrowBase.setVisible(visible);
+    }
+  }
+
+  /**
    * Clean up event listeners
    */
   shutdown() {
@@ -372,12 +387,13 @@ export default class UIScene extends Phaser.Scene {
       this.gameScene.events.off("livesUpdate", this.updateLives, this);
       this.gameScene.events.off("budgetUpdate", this.updateBudget, this);
     }
-    
+
     if (this.events) {
       this.events.off("hardcoreSizeUpdate", this.updateSizeIndicator, this);
       this.events.off("hardcoreAngleUpdate", this.updateAngleIndicator, this);
       this.events.off("hardcoreForceUpdate", this.updateForceIndicator, this);
       this.events.off("hardcorePlaceholderMove", this.updateAngleArrowPosition, this);
+      this.events.off("hardcoreArrowVisibility", this.updateAngleArrowVisibility, this);
     }
   }
 }
