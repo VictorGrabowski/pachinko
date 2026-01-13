@@ -13,6 +13,9 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
+    // Store raw modifiers for access
+    this.modifiers = modifiers;
+
     // Power-up modifiers
     this.isGolden = modifiers.isGolden || false;
     this.isGhost = modifiers.isGhost || false;

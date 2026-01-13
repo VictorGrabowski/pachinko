@@ -141,6 +141,15 @@ export default class GameScene extends Phaser.Scene {
       this.initHardcoreLaunchMode();
     }
 
+    // Initialize Bucket Combo (Global Combo)
+    this.bucketCombo = 0;
+    this.maxBucketCombo = 0; // Track max for this life/session if needed
+
+    // Initialize Spell Inventory map (synced with PowerUpManager)
+    // We'll rely on PowerUpManager for storage to persist across scenes or resets if needed,
+    // but for now GameScene acts as the controller.
+
+
     this.setupInput();
 
     // === ADDICTIVE MECHANICS INITIALIZATION ===
@@ -1086,6 +1095,92 @@ export default class GameScene extends Phaser.Scene {
     // Emit event for UI update
     this.events.emit("scoreUpdate", this.score);
     EventBus.emit(GameEvents.SCORE_UPDATE, { score: this.score, total: this.score });
+
+    // === NEW COMBO SYSTEM ===
+    // Points based on bucket index:
+    // Buckets config: [Small, Medium, Big, SPECIAL(Middle), Big, Medium, Small]
+    // Indices: 0, 1, 2, 3, 4, 5, 6
+    // Middle (3): +3
+    // Adjacent (2, 4): +2
+    // Edges/Others (0, 1, 5, 6): +1
+    // Note: The prompt says "celles à coté" (next to middle) give 2.
+    // "ceux des bords" (edges) give 1.
+    // Based on visual layout:
+    // 3 is Middle.
+    // 2 and 4 are adjacent to middle.
+    // 0, 1, 5, 6 are outer.
+
+    const bucketIndexValid = this.buckets.indexOf(bucket);
+    let comboPoints = 1;
+
+    if (bucketIndexValid === 3) {
+      comboPoints = 3;
+    } else if (bucketIndexValid === 2 || bucketIndexValid === 4) {
+      comboPoints = 2;
+    } else {
+      comboPoints = 1;
+    }
+
+    this.bucketCombo += comboPoints;
+
+    // Emit update for Combo Bar UI
+    // We pass the RAW combo points as the "Combo" value
+    EventBus.emit(GameEvents.SCORE_COMBO, { combo: this.bucketCombo });
+
+    // Check thresholds and award Spells
+    // Tiers: x3, x5, x8, x10
+    // We check if we JUST crossed a threshold or reached it.
+    // Since we add points (e.g. +3), we might jump over a threshold.
+    // We should check if (oldCombo < T <= newCombo).
+
+    const oldCombo = this.bucketCombo - comboPoints;
+    const newCombo = this.bucketCombo;
+
+    const tiers = [3, 5, 8, 10];
+
+    tiers.forEach(tier => {
+      if (oldCombo < tier && newCombo >= tier) {
+        this.awardSpellTier(tier);
+      }
+    });
+  }
+
+  /**
+   * Award spells based on combo tier
+   */
+  awardSpellTier(tier) {
+    let potentialSpells = [];
+
+    switch (tier) {
+      case 3:
+        potentialSpells = ['ghost', 'bigBall'];
+        break;
+      case 5:
+        potentialSpells = ['ghost', 'bigBall', 'magnet'];
+        break;
+      case 8:
+        potentialSpells = ['goldenBall', 'magnet', 'freeze'];
+        break;
+      case 10:
+        // "Une boule de chaque" -> Give ALL
+        ['ghost', 'bigBall', 'magnet', 'goldenBall', 'freeze'].forEach(spell => {
+          PowerUpManager.addPowerUp(spell);
+        });
+        EventBus.emit(GameEvents.UI_MESSAGE, { text: "ULTIMATE COMBO! ALL SPELLS!", color: 0xFFD700 });
+        return; // Exit as we handled it
+      default:
+        return;
+    }
+
+    // Pick one random spell
+    if (potentialSpells.length > 0) {
+      const spell = Phaser.Utils.Array.GetRandom(potentialSpells);
+      PowerUpManager.addPowerUp(spell);
+
+      // Notify user
+      const spellName = this.languageManager.getText(`powerups.${spell}`) || spell;
+      EventBus.emit(GameEvents.UI_MESSAGE, { text: `${spellName} Unlocked!`, color: 0x00FF00 });
+    }
   }
 
   /**
@@ -1176,6 +1271,8 @@ export default class GameScene extends Phaser.Scene {
 
     // Lose a life
     this.lives--;
+    this.bucketCombo = 0; // Reset combo on life loss
+    EventBus.emit(GameEvents.SCORE_COMBO, { combo: this.bucketCombo });
     this.events.emit("livesUpdate", this.lives);
 
     // Clean up
@@ -1234,9 +1331,14 @@ export default class GameScene extends Phaser.Scene {
 
     // Update creature movement for all creatures
     if (this.creatures && this.creatures.length > 0) {
-      this.creatures.forEach((creature) => {
-        creature.update(time, delta);
-      });
+      // Check if any active ball has freeze modifier
+      const isFrozen = this.balls.some(b => b.modifiers && b.modifiers.freezePacmans);
+
+      if (!isFrozen) {
+        this.creatures.forEach((creature) => {
+          creature.update(time, delta);
+        });
+      }
     }
 
     // Update moving pins physics bodies
@@ -1312,6 +1414,8 @@ export default class GameScene extends Phaser.Scene {
         ball.destroy();
         this.activeBalls--;
         this.lives--;
+        this.bucketCombo = 0; // Reset combo on ball lost
+        EventBus.emit(GameEvents.SCORE_COMBO, { combo: this.bucketCombo });
 
         // Emit ball lost event
         EventBus.emit(GameEvents.BALL_LOST);

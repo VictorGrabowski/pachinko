@@ -95,6 +95,8 @@ export const GameEvents = {
     POWERUP_ACTIVATED: 'powerup:activated',
     POWERUP_EXPIRED: 'powerup:expired',
     GOLDEN_BALL_TRIGGERED: 'ball:golden',
+    INVENTORY_UPDATE: 'powerup:inventory',
+    POWERUP_EQUIPPED: 'powerup:equipped',
 
     // Special bucket events
     MYSTERY_BUCKET_HIT: 'bucket:mystery',

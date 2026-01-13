@@ -58,96 +58,72 @@ class PowerUpManagerClass {
      * Setup event listeners
      */
     setupEventListeners() {
-        EventBus.on(GameEvents.COMBO_THRESHOLD, this.handleComboThreshold, this);
-    }
-
-    /**
-     * Handle combo threshold awards
-     * @param {Object} data - { combo }
-     */
-    handleComboThreshold(data) {
-        const { combo } = data;
-
-        // Award power-ups based on combo milestones
-        if (combo === 5) {
-            this.activatePowerUp('magnet');
-            EventBus.emit(GameEvents.UI_MESSAGE, { text: "MAGNET BALL UNLOCKED!", color: 0x00FFFF });
-        } else if (combo === 10) {
-            this.activatePowerUp('multiBall');
-            EventBus.emit(GameEvents.UI_MESSAGE, { text: "MULTI-BALL READY!", color: 0xFF00FF });
-        } else if (combo === 20) {
-            this.activatePowerUp('ghost');
-            EventBus.emit(GameEvents.UI_MESSAGE, { text: "GHOST BALL AQUIRED!", color: 0xFFFFFF });
-        } else if (combo === 30) {
-            this.activatePowerUp('bigBall');
-            EventBus.emit(GameEvents.UI_MESSAGE, { text: "BIG BALL INCOMING!", color: 0xFFA500 });
-        }
+        // Removed auto-activation on combo threshold
+        // GameScene handles adding spells to inventory now
     }
 
     /**
      * Reset all power-up states
      */
     reset() {
-        this.powerUps = {
-            magnet: { active: false, remainingLaunches: 0 },
-            ghost: { active: false, remainingLaunches: 0 },
-            multiBall: { active: false, count: 0 },
-            bigBall: { active: false, remainingLaunches: 0 },
-            goldenBall: { active: false }
+        // Inventory: Count of possessed spells
+        this.inventory = {
+            magnet: 0,
+            ghost: 0,
+            multiBall: 0,
+            bigBall: 0,
+            goldenBall: 0,
+            freeze: 0
         };
+
+        // Equipped: The spell selected for the NEXT ball
+        this.equippedSpell = null;
+
         this.currentBallModifiers = {
             isGolden: false,
             isGhost: false,
             isBig: false,
             hasMagnet: false,
-            scoreMultiplier: 1
+            scoreMultiplier: 1,
+            freezePacmans: false
         };
     }
 
     /**
-     * Activate a power-up
-     * @param {string} type - Power-up type ('magnet', 'ghost', 'multiBall', 'bigBall')
-     * @returns {boolean} Success
+     * Add a power-up to inventory
+     * @param {string} type 
+     * @param {number} amount 
      */
-    activatePowerUp(type) {
-        const config = POWERUP_CONFIG[type.toUpperCase()];
-        if (!config) return false;
-
-        switch (type) {
-            case 'magnet':
-                this.powerUps.magnet.active = true;
-                this.powerUps.magnet.remainingLaunches = config.DURATION_LAUNCHES;
-                break;
-            case 'ghost':
-                this.powerUps.ghost.active = true;
-                this.powerUps.ghost.remainingLaunches = config.DURATION_LAUNCHES;
-                break;
-            case 'multiBall':
-                this.powerUps.multiBall.active = true;
-                this.powerUps.multiBall.count = config.COUNT;
-                break;
-            case 'bigBall':
-                this.powerUps.bigBall.active = true;
-                this.powerUps.bigBall.remainingLaunches = config.DURATION_LAUNCHES;
-                break;
+    addPowerUp(type, amount = 1) {
+        if (this.inventory.hasOwnProperty(type)) {
+            this.inventory[type] += amount;
+            EventBus.emit(GameEvents.INVENTORY_UPDATE, this.inventory);
+            return true;
         }
-
-        EventBus.emit(GameEvents.POWERUP_ACTIVATED, { type, config });
-        return true;
+        return false;
     }
 
     /**
-     * Check if a power-up is active
-     * @param {string} type - Power-up type
-     * @returns {boolean}
+     * Equip a power-up for the next launch
+     * @param {string} type 
      */
-    isActive(type) {
-        return this.powerUps[type]?.active || false;
+    equipPowerUp(type) {
+        if (this.inventory[type] > 0) {
+            // Toggle off if already equipped
+            if (this.equippedSpell === type) {
+                this.equippedSpell = null;
+            } else {
+                this.equippedSpell = type;
+            }
+            EventBus.emit(GameEvents.POWERUP_EQUIPPED, { type: this.equippedSpell });
+            return true;
+        }
+        return false;
     }
 
     /**
      * Get modifiers to apply to the next ball launch
-     * Decrements remaining launches for applicable power-ups
+     * Consumes the equipped spell from inventory
      * @returns {Object} Ball modifiers
      */
     getNextBallModifiers() {
@@ -156,12 +132,15 @@ class PowerUpManagerClass {
             isGhost: false,
             isBig: false,
             hasMagnet: false,
+            isMultiBall: false,
             scoreMultiplier: 1,
             additionalBalls: 0,
-            spreadAngle: 0
+            spreadAngle: 0,
+            freezePacmans: false
         };
 
-        // Check for golden ball (random chance)
+        // Check for golden ball (random chance independent of spells, OR via spell)
+        // If golden spell equipped, force it.
         if (FeatureManager.isEnabled('goldenBall')) {
             const chance = FeatureManager.getParameter('goldenBall', 'chance') || POWERUP_CONFIG.GOLDEN_BALL.CHANCE;
             if (Math.random() < chance) {
@@ -171,38 +150,47 @@ class PowerUpManagerClass {
             }
         }
 
-        // Apply magnet
-        if (this.powerUps.magnet.active) {
-            modifiers.hasMagnet = true;
-            this.powerUps.magnet.remainingLaunches--;
-            if (this.powerUps.magnet.remainingLaunches <= 0) {
-                this.deactivatePowerUp('magnet');
-            }
-        }
+        // Apply Equipped Spell
+        if (this.equippedSpell) {
+            const type = this.equippedSpell;
+            const config = POWERUP_CONFIG[type.toUpperCase()] || {};
 
-        // Apply ghost
-        if (this.powerUps.ghost.active) {
-            modifiers.isGhost = true;
-            this.powerUps.ghost.remainingLaunches--;
-            if (this.powerUps.ghost.remainingLaunches <= 0) {
-                this.deactivatePowerUp('ghost');
-            }
-        }
+            // Consume inventory
+            if (this.inventory[type] > 0) {
+                this.inventory[type]--;
+                EventBus.emit(GameEvents.INVENTORY_UPDATE, this.inventory);
 
-        // Apply big ball
-        if (this.powerUps.bigBall.active) {
-            modifiers.isBig = true;
-            this.powerUps.bigBall.remainingLaunches--;
-            if (this.powerUps.bigBall.remainingLaunches <= 0) {
-                this.deactivatePowerUp('bigBall');
-            }
-        }
+                // Apply effects
+                switch (type) {
+                    case 'magnet':
+                        modifiers.hasMagnet = true;
+                        break;
+                    case 'ghost':
+                        modifiers.isGhost = true;
+                        break;
+                    case 'multiBall':
+                        modifiers.isMultiBall = true;
+                        modifiers.additionalBalls = (config.COUNT || 3) - 1;
+                        modifiers.spreadAngle = config.SPREAD_ANGLE || 30;
+                        break;
+                    case 'bigBall':
+                        modifiers.isBig = true;
+                        break;
+                    case 'goldenBall':
+                        modifiers.isGolden = true;
+                        modifiers.scoreMultiplier = 2; // Override/Ensure x2
+                        break;
+                    case 'freeze':
+                        modifiers.freezePacmans = true;
+                        break;
+                }
 
-        // Apply multi-ball
-        if (this.powerUps.multiBall.active) {
-            modifiers.additionalBalls = this.powerUps.multiBall.count - 1;
-            modifiers.spreadAngle = POWERUP_CONFIG.MULTI_BALL.SPREAD_ANGLE;
-            this.deactivatePowerUp('multiBall');
+                EventBus.emit(GameEvents.POWERUP_ACTIVATED, { type });
+            }
+
+            // Reset equipped after use
+            this.equippedSpell = null;
+            EventBus.emit(GameEvents.POWERUP_EQUIPPED, { type: null });
         }
 
         this.currentBallModifiers = modifiers;
@@ -210,18 +198,17 @@ class PowerUpManagerClass {
     }
 
     /**
-     * Deactivate a power-up
-     * @param {string} type - Power-up type
+     * Get current inventory
      */
-    deactivatePowerUp(type) {
-        if (this.powerUps[type]) {
-            this.powerUps[type].active = false;
-            this.powerUps[type].remainingLaunches = 0;
-            if (type === 'multiBall') {
-                this.powerUps[type].count = 0;
-            }
-            EventBus.emit(GameEvents.POWERUP_EXPIRED, { type });
-        }
+    getInventory() {
+        return { ...this.inventory };
+    }
+
+    /**
+     * Get currently equipped spell
+     */
+    getEquippedSpell() {
+        return this.equippedSpell;
     }
 
     /**
@@ -239,14 +226,6 @@ class PowerUpManagerClass {
      */
     getCost(type) {
         return POWERUP_CONFIG[type.toUpperCase()]?.COST || 0;
-    }
-
-    /**
-     * Get all power-up states
-     * @returns {Object}
-     */
-    getAllStates() {
-        return { ...this.powerUps };
     }
 
     /**

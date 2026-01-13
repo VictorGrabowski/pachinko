@@ -3,6 +3,7 @@ import { DESIGN_CONSTANTS, HARDCORE_LAUNCH } from "../config/gameConfig.js";
 import { formatScore } from "../utils/helpers.js";
 import LanguageManager from "../managers/LanguageManager.js";
 import FeatureManager from "../managers/FeatureManager.js";
+import PowerUpManager from "../managers/PowerUpManager.js";
 import EventBus, { GameEvents } from "../core/EventBus.js";
 import AchievementManager, { TIER_CONFIG } from "../managers/AchievementManager.js";
 
@@ -167,6 +168,11 @@ export default class UIScene extends Phaser.Scene {
       // Check for comeback bonus
       EventBus.on(GameEvents.COMEBACK_BONUS_ACTIVE, this.showComebackBonus, this);
     }
+
+    // === SPELL PANEL ===
+    this.createSpellPanel();
+    EventBus.on(GameEvents.INVENTORY_UPDATE, this.updateSpellPanel, this);
+    EventBus.on(GameEvents.POWERUP_EQUIPPED, this.onSpellEquipped, this);
   }
 
   /**
@@ -649,6 +655,132 @@ export default class UIScene extends Phaser.Scene {
   /**
    * Clean up event listeners
    */
+  /**
+   * Create the spell inventory panel
+   */
+  createSpellPanel() {
+    // Position below lives container on right side
+    this.spellPanel = this.add.container(750, 100);
+
+    // Config for spells
+    const spellConfig = [
+      { key: 'ghost', icon: '👻', color: 0xFFFFFF },
+      { key: 'bigBall', icon: '⚾', color: 0xFFA500 },
+      { key: 'magnet', icon: '🧲', color: 0x00FFFF },
+      { key: 'goldenBall', icon: '🌟', color: 0xFFD700 },
+      { key: 'freeze', icon: '❄️', color: 0xADD8E6 }
+    ];
+
+    this.spellItems = {};
+
+    spellConfig.forEach((spell, index) => {
+      const y = index * 55;
+
+      const itemContainer = this.add.container(0, y);
+
+      // Background (clickable)
+      const bg = this.add.rectangle(0, 0, 50, 45, 0x000000, 0.6);
+      bg.setStrokeStyle(2, spell.color, 0.5);
+      bg.setInteractive({ useHandCursor: true });
+
+      // Click handler
+      bg.on('pointerdown', () => {
+        PowerUpManager.equipPowerUp(spell.key);
+      });
+
+      // Icon
+      const icon = this.add.text(0, -5, spell.icon, { fontSize: '24px' }).setOrigin(0.5);
+
+      // Count badge
+      const countBg = this.add.circle(15, 15, 10, 0xFF0000);
+      const countText = this.add.text(15, 15, "0", {
+        fontSize: '12px',
+        fontStyle: 'bold',
+        color: '#FFFFFF'
+      }).setOrigin(0.5);
+
+      // Highlight border (for equipped state)
+      const highlight = this.add.rectangle(0, 0, 50, 45);
+      highlight.setStrokeStyle(4, 0xFFFFFF);
+      highlight.setVisible(false);
+
+      itemContainer.add([bg, icon, countBg, countText, highlight]);
+      this.spellPanel.add(itemContainer);
+
+      this.spellItems[spell.key] = {
+        container: itemContainer,
+        bg,
+        countBg,
+        countText,
+        highlight,
+        baseColor: spell.color
+      };
+
+      // Initial state: hidden if 0? Or grayed out? Grayed out.
+      this.updateSingleSpellItem(spell.key, 0);
+    });
+  }
+
+  updateSingleSpellItem(key, count) {
+    const item = this.spellItems[key];
+    if (!item) return;
+
+    item.countText.setText(count.toString());
+
+    // Visual feedback for availability
+    if (count > 0) {
+      item.container.setAlpha(1);
+      item.bg.setStrokeStyle(2, item.baseColor, 1);
+      item.countBg.setVisible(true);
+      item.countText.setVisible(true);
+      item.bg.setInteractive(); // Enable clicking
+    } else {
+      item.container.setAlpha(0.3);
+      item.bg.setStrokeStyle(1, 0x555555, 0.5);
+      item.countBg.setVisible(false);
+      item.countText.setVisible(false);
+      item.bg.disableInteractive(); // Disable clicking
+
+      // If it was equipped, it should be unequipped by logic elsewhere, 
+      // but we ensure highlight is off
+      item.highlight.setVisible(false);
+    }
+  }
+
+  updateSpellPanel(inventory) {
+    Object.keys(inventory).forEach(key => {
+      this.updateSingleSpellItem(key, inventory[key]);
+    });
+  }
+
+  onSpellEquipped(data) {
+    const equippedType = data.type;
+
+    // Reset all highlights
+    Object.values(this.spellItems).forEach(item => {
+      item.highlight.setVisible(false);
+      // Restore normal stroke
+      if (item.container.alpha === 1) { // if available
+        item.bg.setStrokeStyle(2, item.baseColor, 1);
+      }
+    });
+
+    // Highlight equipped
+    if (equippedType && this.spellItems[equippedType]) {
+      const item = this.spellItems[equippedType];
+      item.highlight.setVisible(true);
+      item.highlight.setStrokeStyle(3, 0xFFFFFF); // Bright white border
+
+      // Pulse animation
+      this.tweens.add({
+        targets: item.container,
+        scale: 1.1,
+        duration: 100,
+        yoyo: true
+      });
+    }
+  }
+
   shutdown() {
     if (this.gameScene && this.gameScene.events) {
       this.gameScene.events.off("scoreUpdate", this.updateScore, this);
@@ -668,5 +800,7 @@ export default class UIScene extends Phaser.Scene {
     EventBus.off(GameEvents.ACHIEVEMENT_UNLOCKED, this.showAchievementPopup, this);
     EventBus.off(GameEvents.TIER_PROGRESS_UPDATE, this.updateProgressBar, this);
     EventBus.off(GameEvents.COMEBACK_BONUS_ACTIVE, this.showComebackBonus, this);
+    EventBus.off(GameEvents.INVENTORY_UPDATE, this.updateSpellPanel, this);
+    EventBus.off(GameEvents.POWERUP_EQUIPPED, this.onSpellEquipped, this);
   }
 }
