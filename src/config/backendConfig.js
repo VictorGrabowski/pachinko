@@ -11,7 +11,7 @@ export const BACKEND_CONFIG = {
     // Supabase Configuration
     // You can find these in your Supabase project settings -> API
     SUPABASE_URL: 'https://tnaoeplwdtwzwzlaabjv.supabase.co', // e.g., 'https://your-project.supabase.co'
-    SUPABASE_ANON_KEY: 'sb_publishable_YrwypUd14fWskQeAZBO1bA_Herf7nsq', // Your public anon key
+    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRuYW9lcGx3ZHR3end6bGFhYmp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTMxNzQsImV4cCI6MjA4Mzg4OTE3NH0.jv3I0d8Tyl1PsEaDvvvBqRUqsYqPqLiLFdHxW9P8qZ0', // Your public anon key
 
     // Database Table Name
     TABLE_NAME: 'leaderboard',
