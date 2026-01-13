@@ -72,6 +72,7 @@ export const TRANSLATIONS = {
       score: "Score",
       lives: "Vies",
       instruction: "Cliquez pour lancer une bille",
+      click: "CLIC !",
     },
     game: {
       combo: "Combo",
@@ -133,6 +134,12 @@ export const TRANSLATIONS = {
       hardcoreModeDesc: "Contrôle de lancement avec curseurs oscillants",
       multiplierLabel: "Modificateur des malus",
       totalMultiplierLabel: "Modificateur total",
+      step1: "ÉTAPE 1 : COMBO MALUS",
+      step2: "ÉTAPE 2 : CHOISIR LA MISE",
+      step3: "ÉTAPE 3 : MULTIPLICATEUR TOTAL",
+      cashOutButton: "⚠️ ENCAISSER & TERMINER",
+      x2Total: "x2 TOTAL",
+      balance: "Solde",
     },
     username: {
       title: "Bienvenue",
@@ -142,6 +149,9 @@ export const TRANSLATIONS = {
       validation: "3-12 caractères alphanumériques",
       error: "Pseudo invalide",
       notSet: "Non défini",
+    },
+    cashOut: {
+      button: "ENCAISSER",
     },
     tutorial: {
       menuButton: "Comment jouer ?",
@@ -227,6 +237,7 @@ export const TRANSLATIONS = {
       dailyChallenge: "Défi Quotidien",
       challengeComplete: "Défi Complété !",
       reward: "Récompense",
+      unlockedTitle: "SUCCÈS DÉBLOQUÉ !",
     },
     powerups: {
       magnet: "Aimant",
@@ -269,6 +280,7 @@ export const TRANSLATIONS = {
       score: "Score",
       lives: "Lives",
       instruction: "Click to launch a ball",
+      click: "CLICK!",
     },
     game: {
       combo: "Combo",
@@ -330,6 +342,12 @@ export const TRANSLATIONS = {
       hardcoreModeDesc: "Launch control with oscillating cursors",
       multiplierLabel: "Malus Multiplier",
       totalMultiplierLabel: "Total Multiplier",
+      step1: "STEP 1: MALUS COMBO",
+      step2: "STEP 2: CHOOSE BET",
+      step3: "STEP 3: TOTAL MULTIPLIER",
+      cashOutButton: "⚠️ CASH OUT & END GAME",
+      x2Total: "x2 TOTAL",
+      balance: "Balance",
     },
     username: {
       title: "Welcome",
@@ -339,6 +357,9 @@ export const TRANSLATIONS = {
       validation: "3-12 alphanumeric characters",
       error: "Invalid username",
       notSet: "Not set",
+    },
+    cashOut: {
+      button: "CASH OUT",
     },
     tutorial: {
       menuButton: "How to Play?",
@@ -424,6 +445,7 @@ export const TRANSLATIONS = {
       dailyChallenge: "Daily Challenge",
       challengeComplete: "Challenge Complete!",
       reward: "Reward",
+      unlockedTitle: "ACHIEVEMENT UNLOCKED!",
     },
     powerups: {
       magnet: "Magnet",

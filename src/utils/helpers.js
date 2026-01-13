@@ -18,7 +18,7 @@ export const applyWabiSabi = (value, jitterAmount = 3) => {
 
 // Format score with commas
 export const formatScore = (score) => {
-  return score.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return Math.floor(score).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
 
 // Alias for formatScore (for number formatting in general)

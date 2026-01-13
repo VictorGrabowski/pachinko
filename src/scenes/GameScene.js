@@ -632,7 +632,7 @@ export default class GameScene extends Phaser.Scene {
     this.clickIndicator.add(cursorGraphics);
 
     // "CLIC!" text bubble
-    const clicText = this.add.text(22, 8, "CLIC!", {
+    const clicText = this.add.text(22, 8, this.languageManager.getText("ui.click"), {
       fontSize: "14px",
       fontFamily: "Arial",
       color: "#FFD700",

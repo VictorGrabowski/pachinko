@@ -39,39 +39,18 @@ export default class UIScene extends Phaser.Scene {
     });
 
     // Bet multiplier display
-    const currentMultiplier = this.budgetManager ? this.budgetManager.getMultiplier() : 1;
-    this.multiplierText = this.add.text(padding, padding + 90, `x${currentMultiplier}`, {
+    // Total Multiplier Display (Bet x Malus)
+    const betMultiplier = this.budgetManager ? this.budgetManager.getMultiplier() : 1;
+    const totalMultiplier = betMultiplier * this.malusMultiplier;
+
+    this.multiplierText = this.add.text(padding, padding + 90, `x${totalMultiplier.toFixed(2)}`, {
       fontSize: "28px",
       color: "#FF6B35",
       fontFamily: "serif",
       fontStyle: "bold",
     });
 
-    // Malus multiplier display (rogue-like bonus)
-    if (this.malusMultiplier > 1) {
-      this.malusMultiplierLabel = this.add.text(padding, padding + 125, this.languageManager.getText('malus.multiplier') + ":", {
-        fontSize: "16px",
-        color: "#F4A460",
-        fontFamily: "serif",
-      });
-
-      this.malusMultiplierText = this.add.text(padding, padding + 145, `x${this.malusMultiplier.toFixed(2)}`, {
-        fontSize: "24px",
-        color: "#00FF00",
-        fontFamily: "serif",
-        fontStyle: "bold",
-      });
-
-      // Add pulsing effect to highlight the bonus
-      this.tweens.add({
-        targets: this.malusMultiplierText,
-        alpha: { from: 1, to: 0.7 },
-        duration: 1000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.inOut'
-      });
-    }
+    // Malus multiplier display removed (consolidated above)
 
     // Lives display
     this.livesLabel = this.add
@@ -109,7 +88,7 @@ export default class UIScene extends Phaser.Scene {
       fontFamily: "serif",
     }).setOrigin(0.5);
 
-    this.cashOutText = this.add.text(cashOutX + 5, cashOutY, "CASH OUT", {
+    this.cashOutText = this.add.text(cashOutX + 5, cashOutY, this.languageManager.getText("cashOut.button"), {
       fontSize: "16px",
       color: "#FFD700",
       fontFamily: "serif",
@@ -194,9 +173,16 @@ export default class UIScene extends Phaser.Scene {
    * Update score display
    */
   updateScore(newScore) {
-    // Apply bet multiplier to displayed score
+    // Apply COMBINED multiplier to displayed score
     const betMultiplier = this.budgetManager ? this.budgetManager.getMultiplier() : 1;
-    const displayScore = newScore * betMultiplier;
+    // This display score is theoretical since logic handles real score, but for UI we show potential? 
+    // Actually, usually score update comes from logic. 
+    // If logic sends raw score (points), we multiply here for display if that's the design.
+    // Based on previous code: `const displayScore = newScore * betMultiplier;`
+    // We should probably keep using the total multiplier.
+    const totalMultiplier = betMultiplier * this.malusMultiplier;
+    const displayScore = Math.floor(newScore * totalMultiplier);
+
     this.scoreText.setText(formatScore(displayScore));
 
     // Pulse animation - ENHANCED
@@ -226,8 +212,10 @@ export default class UIScene extends Phaser.Scene {
   /**
    * Update multiplier display
    */
-  updateMultiplier(multiplier) {
-    this.multiplierText.setText(`x${multiplier}`);
+  updateMultiplier(betMultiplier) {
+    // Update with new bet multiplier combined with stored malus multiplier
+    const totalMultiplier = betMultiplier * this.malusMultiplier;
+    this.multiplierText.setText(`x${totalMultiplier.toFixed(2)}`);
   }
 
   /**
@@ -424,7 +412,7 @@ export default class UIScene extends Phaser.Scene {
     }
 
     // Label
-    const label = this.add.text(0, 120, "COMBO", {
+    const label = this.add.text(0, 120, this.languageManager.getText("game.combo"), {
       fontSize: "14px",
       fontStyle: "bold",
       color: "#FFFFFF"
@@ -581,7 +569,7 @@ export default class UIScene extends Phaser.Scene {
     this.popupContainer.add(this.popupIcon);
 
     // Title
-    this.popupTitle = this.add.text(-120, -15, "ACHIEVEMENT UNLOCKED!", {
+    this.popupTitle = this.add.text(-120, -15, this.languageManager.getText("achievements.unlockedTitle"), {
       fontSize: "16px",
       fontStyle: "bold",
       color: "#FFD700",

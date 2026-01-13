@@ -127,25 +127,24 @@ export default class BettingScene extends Phaser.Scene {
       this.registry.set("currentMalusConfig", this.currentMalusConfig);
     }
 
-    // --- STEP 1: MALUS ---
-    const step1Y = 240;
-    this.add.text(centerX, step1Y, "STEP 1: MALUS COMBO", {
+    const step1Y = 220; // Moved up to avoid overlap
+    this.add.text(centerX, step1Y, this.languageManager.getText("malus.step1"), {
       fontSize: "20px",
       color: "#888888",
       fontFamily: "serif",
       fontStyle: "bold"
     }).setOrigin(0.5);
 
-    // Create malus display panel
-    this.createMalusPanel(centerX, step1Y + 90);
+    // Create reroll button (now ABOVE malus panel)
+    this.createRerollButton(centerX, step1Y + 50);
 
-    // Create reroll button (part of Step 1)
-    this.createRerollButton(centerX, step1Y + 240);
+    // Create malus display panel (moved down)
+    this.createMalusPanel(centerX, step1Y + 200);
 
 
     // --- STEP 2: BET ---
     const step2Y = 580;
-    this.add.text(centerX, step2Y, "STEP 2: CHOOSE BET", {
+    this.add.text(centerX, step2Y, this.languageManager.getText("malus.step2"), {
       fontSize: "20px",
       color: "#888888",
       fontFamily: "serif",
@@ -158,7 +157,7 @@ export default class BettingScene extends Phaser.Scene {
 
     // --- STEP 3: TOTAL ---
     const step3Y = 720;
-    this.add.text(centerX, step3Y, "STEP 3: TOTAL MULTIPLIER", {
+    this.add.text(centerX, step3Y, this.languageManager.getText("malus.step3"), {
       fontSize: "20px",
       color: "#888888",
       fontFamily: "serif",
@@ -242,7 +241,7 @@ export default class BettingScene extends Phaser.Scene {
    * Create the malus configuration panel
    */
   createMalusPanel(centerX, centerY) {
-    // Panel background
+    // Panel background - saved reference for color updates
     this.malusPanel = this.add.rectangle(centerX, centerY, 700, 220, 0x1a1a2e, 0.9);
     this.malusPanel.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.ACCENT);
 
@@ -250,6 +249,42 @@ export default class BettingScene extends Phaser.Scene {
     this.malusContainer = this.add.container(0, 0);
 
     this.updateMalusDisplay(centerX, centerY);
+  }
+
+  /**
+   * Helper to get color and font size based on multiplier value (0-9 scale)
+   * Green -> Bright Red
+   */
+  getMultiplierStyle(value) {
+    // Clamp value to 0-9 for color interpolation
+    const t = Math.min(Math.max((value - 1) / 8, 0), 1); // 1.0 -> 0, 9.0+ -> 1
+
+    // Interpolate color from Green (0x00FF00) to Red (0xFF0000)
+    // Actually user wants "green to bright red"
+    // Let's go Green -> Yellow -> Red
+    let r, g, b;
+
+    if (t < 0.5) {
+      // Green to Yellow
+      const localT = t * 2;
+      r = Math.floor(0 + 255 * localT);
+      g = 255;
+      b = 0;
+    } else {
+      // Yellow to Red
+      const localT = (t - 0.5) * 2;
+      r = 255;
+      g = Math.floor(255 * (1 - localT));
+      b = 0;
+    }
+
+    const colorInt = (r << 16) + (g << 8) + b;
+    const colorHex = `#${colorInt.toString(16).padStart(6, '0')}`;
+
+    // Size interpolation: 42px to 64px
+    const fontSize = Math.floor(42 + (t * 22)) + "px";
+
+    return { color: colorHex, fontSize };
   }
 
   /**
@@ -261,63 +296,111 @@ export default class BettingScene extends Phaser.Scene {
 
     const maluses = this.currentMalusConfig.selectedMaluses;
     const multiplier = this.currentMalusConfig.multiplier;
+    const hasHardcore = maluses.some(m => m.isHardcore);
+
+    // Update panel appearance based on hardcore mode
+    if (this.malusPanel) {
+      if (hasHardcore) {
+        this.malusPanel.setFillStyle(0x3a0000, 0.95); // Reddish background
+        this.malusPanel.setStrokeStyle(4, 0xFF0000); // Red stroke
+        // Add subtle shake effect if new
+        if (!this.malusPanel.isShaking) {
+          this.malusPanel.isShaking = true;
+          this.tweens.add({
+            targets: this.malusPanel,
+            x: centerX + 2,
+            duration: 50,
+            yoyo: true,
+            repeat: 5,
+            onComplete: () => { this.malusPanel.isShaking = false; }
+          });
+        }
+      } else {
+        this.malusPanel.setFillStyle(0x1a1a2e, 0.9); // Default
+        this.malusPanel.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.ACCENT);
+      }
+    }
 
     // Multiplier display at top of panel
+    // Label with Skull if hardcore
+    const labelText = hasHardcore
+      ? `💀 ${this.languageManager.getText("malus.multiplier")} (x2) 💀`
+      : `${this.languageManager.getText("malus.multiplier")}:`;
+
     const multiplierLabel = this.add.text(
-      centerX, centerY - 100,
-      `${this.languageManager.getText("malus.multiplier")}:`,
+      centerX, centerY - 80,
+      labelText,
       {
-        fontSize: "20px",
-        color: "#F4A460",
+        fontSize: hasHardcore ? "24px" : "20px",
+        color: hasHardcore ? "#FF0000" : "#F4A460",
         fontFamily: "serif",
+        fontStyle: "bold"
       }
     ).setOrigin(0.5);
     this.malusContainer.add(multiplierLabel);
 
+    // Dynamic style for the value
+    const style = this.getMultiplierStyle(multiplier);
+
     const multiplierText = this.add.text(
-      centerX, centerY - 70,
+      centerX, centerY - 45,
       `x${multiplier.toFixed(2)}`,
       {
-        fontSize: "42px",
-        color: "#FFD700",
+        fontSize: style.fontSize,
+        color: style.color,
         fontFamily: "serif",
         fontStyle: "bold",
+        stroke: hasHardcore ? "#000000" : null,
+        strokeThickness: hasHardcore ? 4 : 0
       }
     ).setOrigin(0.5);
+
+    // Animate scale on refresh
+    this.tweens.add({
+      targets: multiplierText,
+      scale: { from: 0.5, to: 1 },
+      duration: 300,
+      ease: 'Back.out'
+    });
+
     this.malusContainer.add(multiplierText);
 
     // Display each malus as a card
-    const cardWidth = 150;
-    const cardHeight = 100;
-    const cardSpacing = 15;
-    const totalWidth = maluses.length * cardWidth + (maluses.length - 1) * cardSpacing;
-    const startX = centerX - totalWidth / 2 + cardWidth / 2;
-    const cardsY = centerY + 30;
+    // Filter out hardcore mode from cards since it has a global effect (red panel + skull)
+    const visibleMaluses = maluses.filter(m => !m.isHardcore);
 
-    maluses.forEach((malus, index) => {
+    const cardWidth = 150;
+    const cardHeight = 110; // Slightly taller for better text
+    const cardSpacing = 15;
+    const totalWidth = visibleMaluses.length * cardWidth + (visibleMaluses.length - 1) * cardSpacing;
+    const startX = centerX - totalWidth / 2 + cardWidth / 2;
+    const cardsY = centerY + 45;
+
+    visibleMaluses.forEach((malus, index) => {
       const cardX = startX + index * (cardWidth + cardSpacing);
 
       // Card background
       const cardBg = this.add.rectangle(
         cardX, cardsY,
         cardWidth, cardHeight,
-        DESIGN_CONSTANTS.COLORS.PRIMARY, 0.6
+        DESIGN_CONSTANTS.COLORS.PRIMARY,
+        0.7
       );
       cardBg.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.GOLD);
       this.malusContainer.add(cardBg);
 
       // Icon
-      const icon = this.add.text(cardX, cardsY - 25, malus.icon, {
-        fontSize: "28px",
+      const icon = this.add.text(cardX, cardsY - 30, malus.icon, {
+        fontSize: "32px",
       }).setOrigin(0.5);
       this.malusContainer.add(icon);
 
       // Name
       const name = this.add.text(
-        cardX, cardsY + 10,
+        cardX, cardsY,
         this.languageManager.getText(malus.nameKey),
         {
-          fontSize: "14px",
+          fontSize: "13px",
           color: "#FFFFFF",
           fontFamily: "serif",
           fontStyle: "bold",
@@ -327,18 +410,22 @@ export default class BettingScene extends Phaser.Scene {
       ).setOrigin(0.5);
       this.malusContainer.add(name);
 
-      // Bonus percentage (if not hardcore)
-      const bonusText = malus.isHardcore
-        ? "x2 TOTAL"
-        : `+${malus.bonusPercent}%`;
+      // EXACT IMPACT DISPLAY
+      // "Explicit impact" instructions
+      // Convert percentage to multiplier add-on, e.g. 33% -> +0.33x
+      const val = (malus.bonusPercent / 100).toFixed(2);
+      const impactText = `+${val}x`;
+
       const bonus = this.add.text(
         cardX, cardsY + 35,
-        bonusText,
+        impactText,
         {
-          fontSize: "16px",
-          color: malus.isHardcore ? "#FF6B35" : "#FFD700",
-          fontFamily: "serif",
+          fontSize: "20px",
+          color: "#FFFF00", // Yellow for normal adds
+          fontFamily: "monospace",
           fontStyle: "bold",
+          stroke: "#000000",
+          strokeThickness: 3
         }
       ).setOrigin(0.5);
       this.malusContainer.add(bonus);
@@ -363,9 +450,6 @@ export default class BettingScene extends Phaser.Scene {
    * Create the reroll button with cost display
    */
   createRerollButton(centerX, y) {
-    const rerollCost = Math.floor(this.budgetManager.getBalance() * 0.2);
-
-    // Reroll button background
     this.rerollButton = this.add.rectangle(
       centerX, y,
       280, 50,
@@ -374,10 +458,9 @@ export default class BettingScene extends Phaser.Scene {
     this.rerollButton.setStrokeStyle(2, DESIGN_CONSTANTS.COLORS.ACCENT);
     this.rerollButton.setInteractive({ useHandCursor: true });
 
-    // Reroll text with cost
     this.rerollButtonText = this.add.text(
       centerX, y,
-      `🎲 ${this.languageManager.getText("malus.reroll")} (${rerollCost} ¥)`,
+      "",
       {
         fontSize: "20px",
         color: "#FFFFFF",
@@ -386,18 +469,11 @@ export default class BettingScene extends Phaser.Scene {
       }
     ).setOrigin(0.5);
 
-    // Cost subtitle
-    this.rerollCostText = this.add.text(
-      centerX, y + 35,
-      this.languageManager.getText("malus.rerollCost"),
-      {
-        fontSize: "14px",
-        color: "#888888",
-        fontFamily: "serif",
-      }
-    ).setOrigin(0.5);
+    // Initial state update
+    this.updateRerollButtonState();
 
     this.rerollButton.on("pointerover", () => {
+      if (this.rerollButton.getData('disabled')) return;
       this.rerollButton.setFillStyle(DESIGN_CONSTANTS.COLORS.ACCENT);
       this.tweens.add({
         targets: [this.rerollButton, this.rerollButtonText],
@@ -408,6 +484,7 @@ export default class BettingScene extends Phaser.Scene {
     });
 
     this.rerollButton.on("pointerout", () => {
+      if (this.rerollButton.getData('disabled')) return;
       this.rerollButton.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY);
       this.tweens.add({
         targets: [this.rerollButton, this.rerollButtonText],
@@ -418,8 +495,43 @@ export default class BettingScene extends Phaser.Scene {
     });
 
     this.rerollButton.on("pointerdown", () => {
+      if (this.rerollButton.getData('disabled')) {
+        this.showStatus(this.languageManager.getText("malus.insufficientReroll"), "#FF6B35");
+        return;
+      }
       this.rerollMalusConfig();
     });
+  }
+
+  /**
+   * Update the reroll button state based on simplified logic:
+   * Disable if remaining balance after reroll < 100
+   */
+  updateRerollButtonState() {
+    if (!this.rerollButton) return;
+
+    const balance = this.budgetManager.getBalance();
+    const rerollCost = Math.floor(balance * 0.2);
+    const predictedBalance = balance - rerollCost;
+
+    // Prevent if balance would drop below 100 (min bet)
+    // This addresses the user request "balance < 100%" (interpreted as < 100 units)
+    const isSafe = predictedBalance >= 100;
+
+    this.rerollButtonText.setText(
+      `🎲 ${this.languageManager.getText("malus.reroll")} (-${rerollCost} ¥)`
+    );
+
+    if (isSafe) {
+      this.rerollButton.setData('disabled', false);
+      this.rerollButton.setAlpha(1);
+      this.rerollButtonText.setAlpha(1);
+      this.rerollButton.setInteractive({ useHandCursor: true });
+    } else {
+      this.rerollButton.setData('disabled', true);
+      this.rerollButton.setAlpha(0.5);
+      this.rerollButtonText.setAlpha(0.5);
+    }
   }
 
   /**
@@ -427,6 +539,13 @@ export default class BettingScene extends Phaser.Scene {
    */
   rerollMalusConfig() {
     const cost = Math.floor(this.budgetManager.getBalance() * 0.2);
+
+    // Safety check BEFORE deducting
+    if (this.budgetManager.getBalance() - cost < 100) {
+      this.showStatus(this.languageManager.getText("malus.insufficientReroll"), "#FF6B35");
+      return;
+    }
+
     const result = this.budgetManager.deductAmount(cost);
 
     if (!result.success) {
@@ -449,7 +568,7 @@ export default class BettingScene extends Phaser.Scene {
       alpha: 0,
       duration: 150,
       onComplete: () => {
-        this.updateMalusDisplay(400, 340);
+        this.updateMalusDisplay(400, 420);
         this.updateTotalMultiplierDisplay();
         this.tweens.add({
           targets: this.malusContainer,
@@ -459,14 +578,11 @@ export default class BettingScene extends Phaser.Scene {
       }
     });
 
-    // Update reroll button cost
-    const newCost = Math.floor(this.budgetManager.getBalance() * 0.2);
-    this.rerollButtonText.setText(
-      `🎲 ${this.languageManager.getText("malus.reroll")} (${newCost} ¥)`
-    );
+    // Update button state (cost and disabled status)
+    this.updateRerollButtonState();
 
     // Show reroll feedback
-    this.showStatus(`-${cost} ¥ 🎲`, "#FF6B35");
+
   }
 
   /**
@@ -592,7 +708,7 @@ export default class BettingScene extends Phaser.Scene {
 
   updateBalanceDisplay() {
     const balance = this.budgetManager.getBalance();
-    this.balanceText.setText(`Balance: ${balance} ¥`);
+    this.balanceText.setText(`${this.languageManager.getText("malus.balance")}: ${balance} ¥`);
   }
 
   showStatus(message, color = "#FFD700") {
@@ -635,7 +751,7 @@ export default class BettingScene extends Phaser.Scene {
     bg.setStrokeStyle(2, 0xFF4500); // Orange-red stroke
     bg.setInteractive({ useHandCursor: true });
 
-    const text = this.add.text(0, 0, "⚠️ CASH OUT & END GAME", {
+    const text = this.add.text(0, 0, this.languageManager.getText("malus.cashOutButton"), {
       fontSize: "18px",
       color: "#FFFFFF",
       fontFamily: "serif",
