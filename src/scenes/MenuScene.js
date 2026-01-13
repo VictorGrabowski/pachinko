@@ -6,6 +6,7 @@ import LanguageManager from "../managers/LanguageManager.js";
 import stateManager from "../managers/StateManager.js";
 import ModalComponent from "../components/ModalComponent.js";
 import UsernameInputOverlay from "../ui/UsernameInputOverlay.js";
+import TutorialOverlay from "../ui/TutorialOverlay.js";
 import EventBus, { GameEvents } from "../core/EventBus.js";
 
 /**
@@ -19,12 +20,14 @@ export default class MenuScene extends Phaser.Scene {
     this.usernameOverlay = null;
     this.languageManager = LanguageManager;
     this.stateManager = stateManager;
-    
+    this.tutorialOverlay = null; // Tutorial overlay instance
+
     // Store references to colored UI elements for dynamic theme updates
     this.menuBackground = null;
     this.startButton = null;
     this.settingsButton = null;
     this.scoreboardButton = null;
+    this.tutorialButton = null;
   }
 
   create() {
@@ -216,6 +219,48 @@ export default class MenuScene extends Phaser.Scene {
       });
     });
 
+    // Tutorial button
+    this.tutorialButton = this.add
+      .rectangle(centerX, 740, 400, 60, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.3)
+      .setInteractive({ useHandCursor: true });
+    this.tutorialButton.setStrokeStyle(1, DESIGN_CONSTANTS.COLORS.PRIMARY, 0.8);
+
+    const tutorialText = this.add
+      .text(centerX, 740, this.languageManager.getText('tutorial.menuButton'), {
+        fontSize: "24px",
+        color: "#F4A460",
+        fontFamily: "serif",
+      })
+      .setOrigin(0.5);
+
+    // Tutorial button interactions
+    this.tutorialButton.on("pointerover", () => {
+      this.tutorialButton.setFillStyle(DESIGN_CONSTANTS.COLORS.GOLD);
+      this.tweens.add({
+        targets: this.tutorialButton,
+        scaleX: 1.05,
+        scaleY: 1.05,
+        duration: 150,
+      });
+    });
+
+    this.tutorialButton.on("pointerout", () => {
+      this.tutorialButton.setFillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.3);
+      this.tweens.add({
+        targets: this.tutorialButton,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 150,
+      });
+    });
+
+    this.tutorialButton.on("pointerdown", () => {
+      if (!this.tutorialOverlay) {
+        this.tutorialOverlay = new TutorialOverlay(this);
+      }
+      this.tutorialOverlay.show();
+    });
+
     // Instructions
     this.add
       .text(
@@ -247,7 +292,7 @@ export default class MenuScene extends Phaser.Scene {
     this.usernameOverlay = new UsernameInputOverlay(this, (username) => {
       this.registry.set("currentUsername", username);
       this.stateManager.saveUsername(username);
-      
+
       // Execute callback if provided (e.g., reopen settings)
       if (onComplete) {
         this.time.delayedCall(100, () => {
@@ -328,7 +373,7 @@ export default class MenuScene extends Phaser.Scene {
         buttonGraphics.strokeRoundedRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight, 18);
       }
       container.add(buttonGraphics);
-      
+
       // Hit area
       const hitArea = this.add.rectangle(x, y, buttonWidth, buttonHeight, 0x000000, 0);
       hitArea.setInteractive({ useHandCursor: true });
@@ -427,33 +472,33 @@ export default class MenuScene extends Phaser.Scene {
     const featuresByCategory = FeatureManager.getFeaturesByCategory();
     const numCategories = Object.keys(featuresByCategory).length;
     const numFeatures = Object.values(featuresByCategory).reduce((sum, features) => sum + features.length, 0);
-    
+
     // Base height: title(70) + lang(55) + palette(85) + reset(65) + closeBtn(60) = 335
     const baseHeight = 335;
     const contentHeight = baseHeight + (45 * numCategories) + (70 * numFeatures) + (8 * Math.max(0, numCategories - 1));
     const panelHeight = Math.min(880, Math.max(580, contentHeight));
-    
+
     // Store panel dimensions for refresh
     this.settingsPanelHeight = panelHeight;
-    
+
     // Settings panel with rounded corners
     const panelWidth = 680;
     const panelCenterY = 500;
     const panelTop = panelCenterY - panelHeight / 2;
     const panelBottom = panelCenterY + panelHeight / 2;
     const panelRadius = 24;
-    
+
     // Store panelTop for refresh
     this.settingsPanelTop = panelTop;
-    
+
     // Main panel background with rounded corners
     const panelGraphics = this.add.graphics();
     this.drawRoundedRect(panelGraphics, 400, panelCenterY, panelWidth, panelHeight, panelRadius, DESIGN_CONSTANTS.COLORS.BACKGROUND, 0.97, DESIGN_CONSTANTS.COLORS.GOLD, 2, 0.6);
     this.settingsOverlay.add(panelGraphics);
-    
+
     // Store reference for refresh
     this.settingsPanelGraphics = panelGraphics;
-    
+
     // Subtle inner glow effect
     const innerGlow = this.add.graphics();
     innerGlow.fillStyle(0xffffff, 0.03);
@@ -475,7 +520,7 @@ export default class MenuScene extends Phaser.Scene {
     lineGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 0.4);
     lineGraphics.fillRoundedRect(300, panelTop + 65, 200, 2, 1);
     this.settingsOverlay.add(lineGraphics);
-    
+
     // Store reference for refresh
     this.settingsLineGraphics = lineGraphics;
 
@@ -492,13 +537,13 @@ export default class MenuScene extends Phaser.Scene {
     // Palette selector
     this.createPaletteSelector(this.settingsOverlay, 100, yPos, panelWidth);
     yPos += 80;
-    
+
     // Separator - subtle rounded line
     const sep1Graphics = this.add.graphics();
     sep1Graphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 0.15);
     sep1Graphics.fillRoundedRect(400 - (panelWidth - 120) / 2, yPos, panelWidth - 120, 2, 1);
     this.settingsOverlay.add(sep1Graphics);
-    
+
     // Store reference for refresh
     this.settingsSep1Graphics = sep1Graphics;
     this.settingsSep1Y = yPos;
@@ -507,13 +552,13 @@ export default class MenuScene extends Phaser.Scene {
     // Reset scoreboard button
     this.createResetScoreboardButton(this.settingsOverlay, yPos, panelWidth);
     yPos += 55;
-    
+
     // Separator - subtle rounded line
     const sep2Graphics = this.add.graphics();
     sep2Graphics.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 0.15);
     sep2Graphics.fillRoundedRect(400 - (panelWidth - 120) / 2, yPos, panelWidth - 120, 2, 1);
     this.settingsOverlay.add(sep2Graphics);
-    
+
     // Store reference for refresh
     this.settingsSep2Graphics = sep2Graphics;
     this.settingsSep2Y = yPos;
@@ -522,31 +567,31 @@ export default class MenuScene extends Phaser.Scene {
     // Store start position for features section
     const featuresStartY = yPos;
     const maxFeaturesHeight = panelBottom - yPos - 70; // Leave space for close button
-    
+
     // Create scrollable container for features
     const featuresContainer = this.add.container(0, 0);
     this.settingsOverlay.add(featuresContainer);
-    
+
     // Create mask for features container with rounded corners
     const maskShape = this.make.graphics();
     maskShape.fillStyle(0xffffff);
     maskShape.fillRoundedRect(70, featuresStartY, 660, maxFeaturesHeight, 12);
     const mask = maskShape.createGeometryMask();
     featuresContainer.setMask(mask);
-    
+
     let featuresYPos = 0; // Relative Y position within features container
 
     // Render features by category (already retrieved above)
     Object.keys(featuresByCategory).forEach(category => {
       // Category header - minimal, clean design
       const categoryLabel = CATEGORY_LABELS[category] || category;
-      
+
       // Subtle rounded background for category
       const categoryBgGraphics = this.add.graphics();
       categoryBgGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.12);
       categoryBgGraphics.fillRoundedRect(400 - (panelWidth - 80) / 2, featuresStartY + featuresYPos - 12, panelWidth - 80, 30, 8);
       featuresContainer.add(categoryBgGraphics);
-      
+
       const categoryHeader = this.add.text(400, featuresStartY + featuresYPos + 3, categoryLabel, {
         fontSize: "16px",
         fontFamily: "serif",
@@ -555,14 +600,14 @@ export default class MenuScene extends Phaser.Scene {
         letterSpacing: 2
       }).setOrigin(0.5);
       featuresContainer.add(categoryHeader);
-      
+
       // Store reference for refresh
       this.settingsCategoryElements.push({
         bgGraphics: categoryBgGraphics,
         header: categoryHeader,
         yPos: featuresStartY + featuresYPos
       });
-      
+
       featuresYPos += 40;
 
       // Features in this category
@@ -573,43 +618,43 @@ export default class MenuScene extends Phaser.Scene {
 
       featuresYPos += 10; // Extra space between categories
     });
-    
+
     // Total height of features content
     const totalFeaturesHeight = featuresYPos;
     const needsScroll = totalFeaturesHeight > maxFeaturesHeight;
-    
+
     // Add scroll functionality if needed
     if (needsScroll) {
       let scrollY = 0;
       const maxScroll = totalFeaturesHeight - maxFeaturesHeight;
-      
+
       // Scroll track - subtle rounded bar
       const scrollTrackGraphics = this.add.graphics();
       scrollTrackGraphics.fillStyle(0xffffff, 0.1);
       scrollTrackGraphics.fillRoundedRect(735, featuresStartY + 5, 6, maxFeaturesHeight - 10, 3);
       this.settingsOverlay.add(scrollTrackGraphics);
-      
+
       // Scroll thumb
       const thumbHeight = Math.max(30, (maxFeaturesHeight / totalFeaturesHeight) * (maxFeaturesHeight - 10));
       const scrollThumb = this.add.graphics();
       scrollThumb.fillStyle(DESIGN_CONSTANTS.COLORS.GOLD, 0.6);
       scrollThumb.fillRoundedRect(735, featuresStartY + 5, 6, thumbHeight, 3);
       this.settingsOverlay.add(scrollThumb);
-      
+
       // Store references for refresh
       this.settingsScrollThumb = scrollThumb;
       this.settingsScrollThumbY = featuresStartY + 5;
       this.settingsScrollThumbHeight = thumbHeight;
-      
+
       // Mouse wheel scroll
       this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
         if (!this.settingsOverlay) return;
-        
+
         scrollY = Phaser.Math.Clamp(scrollY + deltaY * 0.5, 0, maxScroll);
-        
+
         // Move features container
         featuresContainer.y = -scrollY;
-        
+
         // Update scroll thumb position
         const thumbY = featuresStartY + 5 + (scrollY / maxScroll) * (maxFeaturesHeight - 10 - thumbHeight);
         scrollThumb.clear();
@@ -622,16 +667,16 @@ export default class MenuScene extends Phaser.Scene {
     const closeBtnY = panelBottom - 38;
     const closeBtnWidth = 180;
     const closeBtnHeight = 44;
-    
+
     const closeBtnGraphics = this.add.graphics();
     closeBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.ACCENT, 1);
     closeBtnGraphics.fillRoundedRect(400 - closeBtnWidth / 2, closeBtnY - closeBtnHeight / 2, closeBtnWidth, closeBtnHeight, 22);
     this.settingsOverlay.add(closeBtnGraphics);
-    
+
     // Store references for refresh
     this.settingsCloseBtnGraphics = closeBtnGraphics;
     this.settingsCloseBtnY = closeBtnY;
-    
+
     // Invisible hit area for the button
     const closeBtnHitArea = this.add.rectangle(400, closeBtnY, closeBtnWidth, closeBtnHeight, 0x000000, 0);
     closeBtnHitArea.setInteractive({ useHandCursor: true });
@@ -693,19 +738,19 @@ export default class MenuScene extends Phaser.Scene {
     const toggleWidth = 44;
     const toggleHeight = 24;
     const toggleX = leftMargin;
-    
+
     // Toggle background - pill shape
     const toggleBg = this.add.graphics();
     toggleBg.fillStyle(feature.enabled ? DESIGN_CONSTANTS.COLORS.GOLD : 0x444444, 1);
     toggleBg.fillRoundedRect(toggleX - toggleWidth / 2, y - toggleHeight / 2, toggleWidth, toggleHeight, toggleHeight / 2);
     container.add(toggleBg);
-    
+
     // Toggle handle (circle)
     const handleRadius = 9;
     const handleX = feature.enabled ? toggleX + toggleWidth / 2 - handleRadius - 3 : toggleX - toggleWidth / 2 + handleRadius + 3;
     const toggleHandle = this.add.circle(handleX, y, handleRadius, 0xffffff);
     container.add(toggleHandle);
-    
+
     // Hit area for toggle
     const toggleHitArea = this.add.rectangle(toggleX, y, toggleWidth + 10, toggleHeight + 10, 0x000000, 0);
     toggleHitArea.setInteractive({ useHandCursor: true });
@@ -737,12 +782,12 @@ export default class MenuScene extends Phaser.Scene {
       const configBtnX = panelCenterX + panelWidth / 2 - 85;
       const configBtnWidth = 100;
       const configBtnHeight = 32;
-      
+
       configBtnGraphics = this.add.graphics();
       configBtnGraphics.fillStyle(feature.enabled ? DESIGN_CONSTANTS.COLORS.PRIMARY : 0x3a3a3a, feature.enabled ? 0.8 : 0.5);
       configBtnGraphics.fillRoundedRect(configBtnX - configBtnWidth / 2, y - configBtnHeight / 2, configBtnWidth, configBtnHeight, 16);
       container.add(configBtnGraphics);
-      
+
       configBtnHitArea = this.add.rectangle(configBtnX, y, configBtnWidth, configBtnHeight, 0x000000, 0);
       configBtnHitArea.setInteractive({ useHandCursor: true });
       container.add(configBtnHitArea);
@@ -793,7 +838,7 @@ export default class MenuScene extends Phaser.Scene {
         duration: 150,
         ease: 'Sine.easeInOut'
       });
-      
+
       // Update toggle background color
       toggleBg.clear();
       toggleBg.fillStyle(feature.enabled ? DESIGN_CONSTANTS.COLORS.GOLD : 0x444444, 1);
@@ -809,7 +854,7 @@ export default class MenuScene extends Phaser.Scene {
         const configBtnX = panelCenterX + panelWidth / 2 - 85;
         const configBtnWidth = 100;
         const configBtnHeight = 32;
-        
+
         configBtnGraphics.clear();
         configBtnGraphics.fillStyle(feature.enabled ? DESIGN_CONSTANTS.COLORS.PRIMARY : 0x3a3a3a, feature.enabled ? 0.8 : 0.5);
         configBtnGraphics.fillRoundedRect(configBtnX - configBtnWidth / 2, y - configBtnHeight / 2, configBtnWidth, configBtnHeight, 16);
@@ -833,14 +878,14 @@ export default class MenuScene extends Phaser.Scene {
         currentValues[param.key] = FeatureManager.getParameter(feature.id, param.key);
       });
     }
-    
+
     this.modal.show(feature, currentValues, (updatedValues) => {
       // Save updated values
       Object.keys(updatedValues).forEach(key => {
         FeatureManager.setParameter(feature.id, key, updatedValues[key]);
       });
       FeatureManager.saveConfig();
-      
+
       // Update AudioSystem if sound overlap setting changed
       if (feature.id === 'sounds' && updatedValues.allowOverlap !== undefined) {
         const gameScene = this.scene.get('GameScene');
@@ -848,7 +893,7 @@ export default class MenuScene extends Phaser.Scene {
           gameScene.audioSystem.setAllowOverlap(updatedValues.allowOverlap);
         }
       }
-      
+
       console.log(`[MenuScene] Updated ${feature.name}:`, updatedValues);
     });
   }
@@ -894,7 +939,7 @@ export default class MenuScene extends Phaser.Scene {
       const panelHeight = this.settingsPanelHeight || 580;
       const panelCenterY = 500;
       const panelRadius = 24;
-      
+
       this.settingsPanelGraphics.clear();
       this.drawRoundedRect(this.settingsPanelGraphics, 400, panelCenterY, panelWidth, panelHeight, panelRadius, DESIGN_CONSTANTS.COLORS.BACKGROUND, 0.97, DESIGN_CONSTANTS.COLORS.GOLD, 2, 0.6);
     }
@@ -1033,7 +1078,7 @@ export default class MenuScene extends Phaser.Scene {
       buttonGraphics.fillStyle(isActive ? DESIGN_CONSTANTS.COLORS.GOLD : 0x444444, isActive ? 1 : 0.6);
       buttonGraphics.fillRoundedRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight, 17);
       container.add(buttonGraphics);
-      
+
       // Hit area
       const hitArea = this.add.rectangle(x, y, buttonWidth, buttonHeight, 0x000000, 0);
       hitArea.setInteractive({ useHandCursor: true });
@@ -1113,12 +1158,12 @@ export default class MenuScene extends Phaser.Scene {
     const changeBtnX = 520;
     const changeBtnWidth = 90;
     const changeBtnHeight = 30;
-    
+
     const changeBtnGraphics = this.add.graphics();
     changeBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.6);
     changeBtnGraphics.fillRoundedRect(changeBtnX - changeBtnWidth / 2, y - changeBtnHeight / 2, changeBtnWidth, changeBtnHeight, 15);
     container.add(changeBtnGraphics);
-    
+
     const changeBtnHitArea = this.add.rectangle(changeBtnX, y, changeBtnWidth, changeBtnHeight, 0x000000, 0);
     changeBtnHitArea.setInteractive({ useHandCursor: true });
     container.add(changeBtnHitArea);
@@ -1149,7 +1194,7 @@ export default class MenuScene extends Phaser.Scene {
     changeBtnHitArea.on('pointerdown', () => {
       // Close settings overlay first
       this.closeSettingsOverlay();
-      
+
       // Show username input overlay, then reopen settings when done
       this.time.delayedCall(300, () => {
         this.showUsernamePrompt(() => {
@@ -1176,7 +1221,7 @@ export default class MenuScene extends Phaser.Scene {
     buttonGraphics.fillStyle(0x8b2525, 0.8);
     buttonGraphics.fillRoundedRect(btnX - btnWidth / 2, y - btnHeight / 2, btnWidth, btnHeight, 19);
     container.add(buttonGraphics);
-    
+
     // Hit area
     const hitArea = this.add.rectangle(btnX, y, btnWidth, btnHeight, 0x000000, 0);
     hitArea.setInteractive({ useHandCursor: true });
@@ -1247,12 +1292,12 @@ export default class MenuScene extends Phaser.Scene {
     const yesBtnHeight = 40;
     const yesBtnX = 320;
     const yesBtnY = 430;
-    
+
     const yesBtnGraphics = this.add.graphics();
     yesBtnGraphics.fillStyle(0x8b2525, 1);
     yesBtnGraphics.fillRoundedRect(yesBtnX - yesBtnWidth / 2, yesBtnY - yesBtnHeight / 2, yesBtnWidth, yesBtnHeight, 20);
     confirmOverlay.add(yesBtnGraphics);
-    
+
     const yesBtnHitArea = this.add.rectangle(yesBtnX, yesBtnY, yesBtnWidth, yesBtnHeight, 0x000000, 0);
     yesBtnHitArea.setInteractive({ useHandCursor: true });
     confirmOverlay.add(yesBtnHitArea);
@@ -1270,12 +1315,12 @@ export default class MenuScene extends Phaser.Scene {
     const noBtnHeight = 40;
     const noBtnX = 480;
     const noBtnY = 430;
-    
+
     const noBtnGraphics = this.add.graphics();
     noBtnGraphics.fillStyle(DESIGN_CONSTANTS.COLORS.PRIMARY, 0.8);
     noBtnGraphics.fillRoundedRect(noBtnX - noBtnWidth / 2, noBtnY - noBtnHeight / 2, noBtnWidth, noBtnHeight, 20);
     confirmOverlay.add(noBtnGraphics);
-    
+
     const noBtnHitArea = this.add.rectangle(noBtnX, noBtnY, noBtnWidth, noBtnHeight, 0x000000, 0);
     noBtnHitArea.setInteractive({ useHandCursor: true });
     confirmOverlay.add(noBtnHitArea);
@@ -1302,7 +1347,7 @@ export default class MenuScene extends Phaser.Scene {
     yesBtnHitArea.on('pointerdown', () => {
       this.stateManager.clearScoreboard();
       confirmOverlay.destroy();
-      
+
       // Show success message
       const success = this.add.text(400, 500, '✓ Scoreboard cleared', {
         fontSize: "18px",
@@ -1311,7 +1356,7 @@ export default class MenuScene extends Phaser.Scene {
         fontStyle: "bold"
       }).setOrigin(0.5);
       success.setDepth(1001);
-      
+
       this.tweens.add({
         targets: success,
         alpha: 0,
