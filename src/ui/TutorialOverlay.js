@@ -25,14 +25,24 @@ const TUTORIAL_STRUCTURE = [
             { title: 'pup_ghost_title', content: 'pup_ghost_desc', image: 'tutorial_ball', alpha: 0.5 },
             { title: 'pup_magnet_title', content: 'pup_magnet_desc', image: 'tutorial_ball' }, // Magnet might need a specific color or icon, but ball is better than board
             { title: 'pup_multiball_title', content: 'pup_multiball_desc', image: 'tutorial_ball' },
-            { title: 'pup_bigball_title', content: 'pup_bigball_desc', image: 'tutorial_ball', scale: 1.5 }
+            { title: 'pup_bigball_title', content: 'pup_bigball_desc', image: 'tutorial_ball', scale: 1.5 },
+            { title: 'pup_freeze_title', content: 'pup_freeze_desc', image: 'tutorial_ball', tint: 0x00FFFF }
         ]
     },
     {
         category: 'cat_malus',
         pages: [
             { title: 'malus_yokai_title', content: 'malus_yokai_desc', special: 'yokai' },
-            { title: 'malus_pins_title', content: 'malus_pins_desc', image: 'tutorial_configuration' }
+            { title: 'malus_pins_title', content: 'malus_pins_desc', image: 'tutorial_configuration' },
+            { title: 'malus_random_title', content: 'malus_random_desc', image: 'tutorial_configuration' }
+        ]
+    },
+    {
+        category: 'cat_calculations',
+        pages: [
+            { title: 'calc_score_title', content: 'calc_score_desc', image: 'tutorial_targets' },
+            { title: 'calc_malus_title', content: 'calc_malus_desc', image: 'tutorial_configuration' },
+            { title: 'calc_total_title', content: 'calc_total_desc', image: 'tutorial_launch' }
         ]
     },
     {

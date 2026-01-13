@@ -18,6 +18,10 @@ export const GAME_CONFIG = {
       debug: false,
     },
   },
+  fps: {
+    target: 120,
+    forceSetTimeOut: true
+  },
   scene: [], // Populated in main.js
 };
 
@@ -133,6 +137,7 @@ export const TRANSLATIONS = {
       hardcoreMode: "Mode Hardcore",
       hardcoreModeDesc: "Contrôle de lancement avec curseurs oscillants",
       multiplierLabel: "Modificateur des malus",
+      normalMultiplier: "Base",
       totalMultiplierLabel: "Modificateur total",
       step1: "ÉTAPE 1 : COMBO MALUS",
       step2: "ÉTAPE 2 : CHOISIR LA MISE",
@@ -166,6 +171,7 @@ export const TRANSLATIONS = {
       cat_features: "Bonus & Événements",
       cat_powerups: "Power-Ups",
       cat_malus: "Malus & Dangers",
+      cat_calculations: "Méthodes de Calcul",
       cat_settings: "Paramètres & Modes",
 
       // Mechanics
@@ -191,16 +197,28 @@ export const TRANSLATIONS = {
       pup_multiball_desc: "• Divise votre bille en 3 billes plus petites.\n• Triple vos chances de toucher des paniers !",
       pup_bigball_title: "Grosse Balle",
       pup_bigball_desc: "• Une bille énorme.\n• Elle bouscule tout sur son passage\net ne rentre que dans les grandes zones.",
+      pup_freeze_title: "Gel du Temps",
+      pup_freeze_desc: "• Fige les Yokais et les obstacles pendant quelques secondes.\n• Idéal pour passer sans danger !",
 
       // Malus
       malus_yokai_title: "Yokais",
       malus_yokai_desc: "• Des fantômes qui patrouillent.\n• S'ils touchent votre bille, elle disparaît !\n• Évitez-les à tout prix.",
       malus_pins_title: "Pins Mouvants",
       malus_pins_desc: "• Certains clous bougent horizontalement.\n• Rendent les rebonds imprévisibles.",
+      malus_random_title: "Taille Aléatoire",
+      malus_random_desc: "• Les clous ont des tailles variables.\n• Modifie la physique des rebonds de façon chaotique !",
 
       // Settings
       set_hardcore_title: "Mode Hardcore",
       set_hardcore_desc: "• Le curseur de visée tremble.\n• La puissance oscille.\n• Pour les experts qui veulent du défi !",
+
+      // Calculations
+      calc_score_title: "Calcul du Score",
+      calc_score_desc: "• Score de base = Valeur du Panier x (1 + 0.2 x Combo).\n• Exemple: Panier (10) avec 5 Combos = 20 points.\n• La Bille Dorée DOUBLE ce montant.",
+      calc_malus_title: "Multiplicateur Malus",
+      calc_malus_desc: "• Choisir des malus augmente la difficulté mais aussi les gains.\n• Chaque malus ajoute un bonus au multiplicateur de points.",
+      calc_total_title: "Multiplicateur Total",
+      calc_total_desc: "• S'applique à la fin de chaque manche.\n• Total = Multiplicateur Mise x Multiplicateur Malus.\n• C'est le facteur final qui détermine vos gains réels.",
     },
     effects: {
       great: "SUPER !",
@@ -248,6 +266,14 @@ export const TRANSLATIONS = {
       freeze: "Gel du Temps",
       active: "Actif",
       remaining: "restants",
+      tooltips: {
+        magnet: "Attire la bille vers les zones de gain.",
+        ghost: "Traverse les obstacles.",
+        multiBall: "Divise la bille en 3.",
+        bigBall: "Bille géante qui bouscule tout.",
+        goldenBall: "Double les points.",
+        freeze: "Arrête le temps pour les Yokais."
+      }
     },
     progress: {
       currentTier: "Niveau actuel",
@@ -342,6 +368,7 @@ export const TRANSLATIONS = {
       hardcoreMode: "Hardcore Mode",
       hardcoreModeDesc: "Launch control with oscillating cursors",
       multiplierLabel: "Malus Multiplier",
+      normalMultiplier: "Base",
       totalMultiplierLabel: "Total Multiplier",
       step1: "STEP 1: MALUS COMBO",
       step2: "STEP 2: CHOOSE BET",
@@ -375,6 +402,7 @@ export const TRANSLATIONS = {
       cat_features: "Bonuses & Events",
       cat_powerups: "Power-Ups",
       cat_malus: "Malus & Dangers",
+      cat_calculations: "Calculation Methods",
       cat_settings: "Settings & Modes",
 
       // Mechanics
@@ -400,16 +428,28 @@ export const TRANSLATIONS = {
       pup_multiball_desc: "• Splits into 3 smaller balls.\n• Triples your hitting chances!",
       pup_bigball_title: "Big Ball",
       pup_bigball_desc: "• A huge ball.\n• Pushes everything aside\nand only fits in large zones.",
+      pup_freeze_title: "Time Freeze",
+      pup_freeze_desc: "• Freezes Yokais and obstacles for a few seconds.\n• Perfect for passing through safely!",
 
       // Malus
       malus_yokai_title: "Yokais",
       malus_yokai_desc: "• Patrol ghosts.\n• If they touch your ball, it vanishes!\n• Avoid them at all costs.",
       malus_pins_title: "Moving Pins",
       malus_pins_desc: "• Some pins move horizontally.\n• Makes rebounds unpredictable.",
+      malus_random_title: "Random Size",
+      malus_random_desc: "• Pins have variable sizes.\n• Chaotic bounces guaranteed!",
 
       // Settings
       set_hardcore_title: "Hardcore Mode",
       set_hardcore_desc: "• Aim cursor shakes.\n• Power oscillates.\n• For experts seeking a challenge!",
+
+      // Calculations
+      calc_score_title: "Score Calculation",
+      calc_score_desc: "• Base Score = Bucket Value x (1 + 0.2 x Combo).\n• Example: Bucket (10) with 5 Combos = 20 points.\n• Golden Ball DOUBLES this amount.",
+      calc_malus_title: "Malus Multiplier",
+      calc_malus_desc: "• Choosing maluses increases difficulty but also rewards.\n• Each malus adds a bonus to the point multiplier.",
+      calc_total_title: "Total Multiplier",
+      calc_total_desc: "• Applied at the end of each round.\n• Total = Bet Multiplier x Malus Multiplier.\n• This is the final factor determining your real earnings.",
     },
     effects: {
       great: "GREAT!",
@@ -457,6 +497,14 @@ export const TRANSLATIONS = {
       freeze: "Time Freeze",
       active: "Active",
       remaining: "remaining",
+      tooltips: {
+        magnet: "Attracts the ball to high value zones.",
+        ghost: "Passes through obstacles.",
+        multiBall: "Splits the ball into 3.",
+        bigBall: "Giant ball that pushes everything.",
+        goldenBall: "Doubles points.",
+        freeze: "Stops time for Yokais."
+      }
     },
     progress: {
       currentTier: "Current tier",

@@ -67,15 +67,15 @@ export default class BudgetManager {
    */
   placeBet(betAmount) {
     if (![100, 200, 1000, 2000].includes(betAmount)) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         errorKey: "betting.invalidBet"
       };
     }
 
     if (betAmount > this.balance) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         errorKey: "betting.insufficientBalance"
       };
     }
@@ -99,8 +99,8 @@ export default class BudgetManager {
    * @returns {Object} Résultat avec nouvelle balance
    */
   addWinnings(score) {
-    const winnings = score * this.currentMultiplier;
-    this.balance += winnings;
+    const winnings = Number(score); // Score already has multiplier applied
+    this.balance = Number(this.balance) + winnings;
 
     // Mettre à jour balance max si dépassée
     if (this.balance > this.balanceMax) {
@@ -147,8 +147,8 @@ export default class BudgetManager {
    */
   deductAmount(amount) {
     if (amount > this.balance) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         errorKey: "malus.insufficientReroll"
       };
     }

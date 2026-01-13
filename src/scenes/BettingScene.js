@@ -372,11 +372,22 @@ export default class BettingScene extends Phaser.Scene {
     const cardWidth = 150;
     const cardHeight = 110; // Slightly taller for better text
     const cardSpacing = 15;
-    const totalWidth = visibleMaluses.length * cardWidth + (visibleMaluses.length - 1) * cardSpacing;
+
+    // Create a base card for "Normal Multiplier" (+1x)
+    const baseMalusCard = {
+      icon: "✨",
+      nameKey: "malus.normalMultiplier",
+      bonusPercent: null, // Special flag
+      isBase: true
+    };
+
+    const displayMaluses = [baseMalusCard, ...visibleMaluses];
+
+    const totalWidth = displayMaluses.length * cardWidth + (displayMaluses.length - 1) * cardSpacing;
     const startX = centerX - totalWidth / 2 + cardWidth / 2;
     const cardsY = centerY + 45;
 
-    visibleMaluses.forEach((malus, index) => {
+    displayMaluses.forEach((malus, index) => {
       const cardX = startX + index * (cardWidth + cardSpacing);
 
       // Card background
@@ -413,15 +424,24 @@ export default class BettingScene extends Phaser.Scene {
       // EXACT IMPACT DISPLAY
       // "Explicit impact" instructions
       // Convert percentage to multiplier add-on, e.g. 33% -> +0.33x
-      const val = (malus.bonusPercent / 100).toFixed(2);
-      const impactText = `+${val}x`;
+      let impactText;
+      let color;
+
+      if (malus.isBase) {
+        impactText = "+1x";
+        color = "#FFFFFF"; // White for base
+      } else {
+        const val = (malus.bonusPercent / 100).toFixed(2);
+        impactText = `+${val}x`;
+        color = "#FFFF00"; // Yellow for normal adds
+      }
 
       const bonus = this.add.text(
         cardX, cardsY + 35,
         impactText,
         {
           fontSize: "20px",
-          color: "#FFFF00", // Yellow for normal adds
+          color: color,
           fontFamily: "monospace",
           fontStyle: "bold",
           stroke: "#000000",

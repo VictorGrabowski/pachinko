@@ -627,17 +627,28 @@ export const MALUS_POOL = [
  * @returns {Object} Configuration with selectedMaluses array and computed multiplier
  */
 export function generateRandomMalusConfig(minMaluses = 2, maxMaluses = 4) {
-  // Shuffle the malus pool
-  const shuffled = [...MALUS_POOL].sort(() => Math.random() - 0.5);
+  // Separate Hardcore from other maluses
+  const hardcoreMalus = MALUS_POOL.find(m => m.isHardcore);
+  const regularMaluses = MALUS_POOL.filter(m => !m.isHardcore);
+
+  // Roll for Hardcore Mode (25% chance)
+  const isHardcore = Math.random() < 0.25;
 
   // Pick random count between min and max
   const count = Math.floor(Math.random() * (maxMaluses - minMaluses + 1)) + minMaluses;
 
-  // Select maluses, avoiding duplicates for creature variants
   const selected = [];
+
+  if (isHardcore) {
+    selected.push(hardcoreMalus);
+  }
+
+  // Shuffle regular maluses
+  const shuffledRegular = [...regularMaluses].sort(() => Math.random() - 0.5);
   let hasCreature = false;
 
-  for (const malus of shuffled) {
+  // Fill remaining slots
+  for (const malus of shuffledRegular) {
     if (selected.length >= count) break;
 
     // Only allow one creature variant

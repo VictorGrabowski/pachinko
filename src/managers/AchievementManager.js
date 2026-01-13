@@ -17,10 +17,10 @@ import FeatureManager from "./FeatureManager.js";
 // Achievement definitions
 const ACHIEVEMENTS = [
     // Combo achievements
-    { id: 'combo_5', name: 'Combo Starter', description: 'Reach a 5x combo', icon: '🔥', condition: { type: 'combo', value: 5 } },
-    { id: 'combo_10', name: 'Combo Pro', description: 'Reach a 10x combo', icon: '💥', condition: { type: 'combo', value: 10 } },
-    { id: 'combo_20', name: 'Combo Master', description: 'Reach a 20x combo', icon: '⚡', condition: { type: 'combo', value: 20 } },
-    { id: 'combo_50', name: 'Combo Legend', description: 'Reach a 50x combo', icon: '👑', condition: { type: 'combo', value: 50 } },
+    { id: 'combo_5', name: 'Combo Starter+', description: 'Reach a 6x combo', icon: '🔥', condition: { type: 'combo', value: 6 } },
+    { id: 'combo_10', name: 'Combo Pro+', description: 'Reach a 11x combo', icon: '💥', condition: { type: 'combo', value: 11 } },
+    { id: 'combo_20', name: 'Combo Master+', description: 'Reach a 21x combo', icon: '⚡', condition: { type: 'combo', value: 21 } },
+    { id: 'combo_50', name: 'Combo Legend+', description: 'Reach a 51x combo', icon: '👑', condition: { type: 'combo', value: 51 } },
 
     // Score achievements
     { id: 'score_500', name: 'First Steps', description: 'Score 500 points in one game', icon: '🌱', condition: { type: 'score', value: 500 } },
@@ -51,7 +51,7 @@ const ACHIEVEMENTS = [
 
 // Daily challenge templates
 const DAILY_CHALLENGES = [
-    { id: 'daily_combo_10', description: 'Reach a 10x combo', condition: { type: 'combo', value: 10 }, reward: 100 },
+    { id: 'daily_combo_10', description: 'Reach a 11x combo', condition: { type: 'combo', value: 11 }, reward: 100 },
     { id: 'daily_score_1000', description: 'Score 1000 points', condition: { type: 'score', value: 1000 }, reward: 150 },
     { id: 'daily_bucket_5', description: 'Hit the x5 bucket 3 times', condition: { type: 'bucket_count', bucketValue: 5, count: 3 }, reward: 120 },
     { id: 'daily_survive_5', description: 'Launch 5 balls without losing', condition: { type: 'survive', value: 5 }, reward: 80 },
@@ -270,10 +270,10 @@ class AchievementManagerClass {
 
     checkComboAchievements() {
         const combo = this.gameSession.maxCombo;
-        if (combo >= 5) this.unlockAchievement('combo_5');
-        if (combo >= 10) this.unlockAchievement('combo_10');
-        if (combo >= 20) this.unlockAchievement('combo_20');
-        if (combo >= 50) this.unlockAchievement('combo_50');
+        if (combo >= 6) this.unlockAchievement('combo_5');
+        if (combo >= 11) this.unlockAchievement('combo_10');
+        if (combo >= 21) this.unlockAchievement('combo_20');
+        if (combo >= 51) this.unlockAchievement('combo_50');
     }
 
     checkScoreAchievements() {

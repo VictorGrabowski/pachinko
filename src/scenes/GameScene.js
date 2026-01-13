@@ -840,53 +840,70 @@ export default class GameScene extends Phaser.Scene {
     // Get ball modifiers from PowerUpManager (includes golden ball chance check)
     const modifiers = PowerUpManager.getNextBallModifiers();
 
-    // Create ball with appropriate size and modifiers
-    let ballSize = this.hardcoreMode ? this.hardcoreState.currentSize : DESIGN_CONSTANTS.BALL_RADIUS;
+    // Determine how many balls to launch
+    const ballCount = modifiers.isMultiBall ? (modifiers.additionalBalls + 1) : 1;
+    const spreadAngle = modifiers.spreadAngle || 30;
+    const totalSpread = (ballCount - 1) * spreadAngle;
+    const startAngle = -totalSpread / 2;
 
-    const ball = new Ball(this, x, y, ballSize, modifiers);
-    this.balls.push(ball);
-    this.activeBalls++;
+    for (let i = 0; i < ballCount; i++) {
+      // Create ball with appropriate size and modifiers
+      let ballSize = this.hardcoreMode ? this.hardcoreState.currentSize : DESIGN_CONSTANTS.BALL_RADIUS;
 
-    // Launch with hardcore parameters or normal mode
-    if (this.hardcoreMode) {
-      // Calculate velocity from angle and force
-      const angleRad = Phaser.Math.DegToRad(this.hardcoreState.currentAngle);
-      const velocityX = Math.sin(angleRad) * this.hardcoreState.currentForce;
-      const velocityY = Math.cos(angleRad) * this.hardcoreState.currentForce * 0.5; // Downward component
-      console.log(`Hardcore launch: angle=${this.hardcoreState.currentAngle.toFixed(1)}°, force=${this.hardcoreState.currentForce.toFixed(1)}, vX=${velocityX.toFixed(1)}, vY=${velocityY.toFixed(1)}`);
-      ball.launch(velocityX, velocityY);
-    } else {
-      ball.launch();
-    }
+      const ball = new Ball(this, x, y, ballSize, modifiers);
+      this.balls.push(ball);
+      this.activeBalls++;
 
-    // Emit ball launched event for achievements
-    EventBus.emit(GameEvents.BALL_LAUNCHED, {
-      ball,
-      isGolden: modifiers.isGolden,
-      modifiers
-    });
+      // Launch with hardcore parameters or normal mode
+      if (this.hardcoreMode) {
+        // In hardcore mode, we might want to offset the angle for multi-ball
+        const angleOffset = modifiers.isMultiBall ? (startAngle + i * spreadAngle) : 0;
+        const finalAngle = this.hardcoreState.currentAngle + angleOffset;
+        const angleRad = Phaser.Math.DegToRad(finalAngle);
+        const velocityX = Math.sin(angleRad) * this.hardcoreState.currentForce;
+        const velocityY = Math.cos(angleRad) * this.hardcoreState.currentForce * 0.5;
+        ball.launch(velocityX, velocityY);
+      } else {
+        if (modifiers.isMultiBall) {
+          // For normal multi-ball, we use a fixed spread
+          const angleRad = Phaser.Math.DegToRad(startAngle + i * spreadAngle);
+          const velocityX = Math.sin(angleRad) * 200; // Consistent horizontal spread
+          const velocityY = Math.cos(angleRad) * 50;  // Slight downward push
+          ball.launch(velocityX, velocityY);
+        } else {
+          ball.launch();
+        }
+      }
 
-    // Emit ball state change to disable CASH OUT button
-    this.scene.get('UIScene').events.emit('ballStateChange', true);
-
-    // Add collision with pins - un seul collider pour tout le groupe
-    this.physics.add.collider(ball, this.pins, this.onPinHit, null, this);
-
-    // Add overlap with buckets
-    this.buckets.forEach((bucket) => {
-      this.physics.add.overlap(ball, bucket.zone, () => {
-        this.onBucketHit(ball, bucket);
+      // Emit ball launched event for achievements (only for the first ball or all? Let's say all)
+      EventBus.emit(GameEvents.BALL_LAUNCHED, {
+        ball,
+        isGolden: modifiers.isGolden,
+        modifiers
       });
-    });
 
-    // Add overlap with creature(s) if enabled
-    if (FeatureManager.isEnabled("creature") && this.creatures) {
-      this.creatures.forEach((creature) => {
-        this.physics.add.overlap(ball, creature, () => {
-          this.onCreatureEatBall(ball);
+      // Add collision with pins
+      this.physics.add.collider(ball, this.pins, this.onPinHit, null, this);
+
+      // Add overlap with buckets
+      this.buckets.forEach((bucket) => {
+        this.physics.add.overlap(ball, bucket.zone, () => {
+          this.onBucketHit(ball, bucket);
         });
       });
+
+      // Add overlap with creature(s) if enabled
+      if (FeatureManager.isEnabled("creature") && this.creatures) {
+        this.creatures.forEach((creature) => {
+          this.physics.add.overlap(ball, creature, () => {
+            this.onCreatureEatBall(ball);
+          });
+        });
+      }
     }
+
+    // Emit ball state change to disable CASH OUT button (at least 1 ball active)
+    this.scene.get('UIScene').events.emit('ballStateChange', true);
   }
 
 
@@ -919,7 +936,7 @@ export default class GameScene extends Phaser.Scene {
       EventBus.emit(GameEvents.SCORE_COMBO, { combo });
 
       // Check combo thresholds for announcements (5, 10, 20, 50)
-      const thresholds = [5, 10, 20, 50];
+      const thresholds = [6, 11, 21, 51];
       for (const threshold of thresholds) {
         if (combo === threshold && this.lastComboThreshold < threshold) {
           this.lastComboThreshold = threshold;
@@ -969,7 +986,12 @@ export default class GameScene extends Phaser.Scene {
     // Apply golden ball score multiplier
     const goldenMultiplier = ball.scoreMultiplier || 1;
     const basePoints = Math.floor(bucket.config.value * multiplier);
-    const points = Math.floor(basePoints * goldenMultiplier);
+    const rawPoints = Math.floor(basePoints * goldenMultiplier);
+
+    // Apply bet multiplier to actual score so 1 Score = 1 Yen
+    const betMultiplier = this.budgetManager ? this.budgetManager.getMultiplier() : 1;
+    const malusMultiplier = this.registry.get("malusMultiplier") || 1;
+    const points = Math.floor(rawPoints * betMultiplier * malusMultiplier);
 
     this.score += points;
 
@@ -1060,9 +1082,8 @@ export default class GameScene extends Phaser.Scene {
       });
     }
 
-    // Show floating score text with bet multiplier applied
-    const betMultiplier = this.budgetManager ? this.budgetManager.getMultiplier() : 1;
-    const displayPoints = points * betMultiplier;
+    // Show floating score text (already multiplied)
+    const displayPoints = points;
 
     // Use flying score animation for big wins
     if (bucket.config.value >= 5) {
@@ -1136,7 +1157,7 @@ export default class GameScene extends Phaser.Scene {
     const oldCombo = this.bucketCombo - comboPoints;
     const newCombo = this.bucketCombo;
 
-    const tiers = [3, 5, 8, 10];
+    const tiers = [4, 6, 9, 11];
 
     tiers.forEach(tier => {
       if (oldCombo < tier && newCombo >= tier) {
@@ -1152,18 +1173,18 @@ export default class GameScene extends Phaser.Scene {
     let potentialSpells = [];
 
     switch (tier) {
-      case 3:
+      case 4:
         potentialSpells = ['ghost', 'bigBall'];
         break;
-      case 5:
-        potentialSpells = ['ghost', 'bigBall', 'magnet'];
+      case 6:
+        potentialSpells = ['ghost', 'bigBall', 'magnet', 'multiBall'];
         break;
-      case 8:
-        potentialSpells = ['goldenBall', 'magnet', 'freeze'];
+      case 9:
+        potentialSpells = ['goldenBall', 'magnet', 'freeze', 'multiBall'];
         break;
-      case 10:
+      case 11:
         // "Une boule de chaque" -> Give ALL
-        ['ghost', 'bigBall', 'magnet', 'goldenBall', 'freeze'].forEach(spell => {
+        ['ghost', 'bigBall', 'magnet', 'goldenBall', 'freeze', 'multiBall'].forEach(spell => {
           PowerUpManager.addPowerUp(spell);
         });
         EventBus.emit(GameEvents.UI_MESSAGE, { text: "ULTIMATE COMBO! ALL SPELLS!", color: 0xFFD700 });
@@ -1504,8 +1525,13 @@ export default class GameScene extends Phaser.Scene {
     // If game over without cash out, player loses the bet and gets nothing
     let winningsResult;
     if (isCashOut) {
+      console.log(`[GameScene] Cash Out triggered. Score: ${this.score}`);
       // Player cashed out - add score to balance
       winningsResult = this.budgetManager.addWinnings(this.score);
+      console.log(`[GameScene] Winnings added. New Balance: ${winningsResult.newBalance}`);
+
+      // Persist updated budget manager to registry
+      this.registry.set('budgetManager', this.budgetManager);
     } else {
       // Game over - player loses bet, no winnings added
       winningsResult = {

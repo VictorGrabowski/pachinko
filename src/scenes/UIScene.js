@@ -173,23 +173,46 @@ export default class UIScene extends Phaser.Scene {
     this.createSpellPanel();
     EventBus.on(GameEvents.INVENTORY_UPDATE, this.updateSpellPanel, this);
     EventBus.on(GameEvents.POWERUP_EQUIPPED, this.onSpellEquipped, this);
+
+    // Initialize tooltip
+    this.createTooltip();
+
+    // FPS Display
+    this.fpsText = this.add.text(10, 970, "FPS: 60", {
+      fontSize: "14px",
+      color: "#00FF00",
+      fontFamily: "monospace",
+      backgroundColor: "#00000088"
+    });
+
+    // Track session stats for Average FPS
+    this.sessionStartTime = this.game.getTime();
+    this.sessionStartFrame = this.game.loop.frame;
+  }
+
+  update(time, delta) {
+    const fps = this.game.loop.actualFps;
+
+    // Calculate duration since THIS SCENE started
+    const currentTime = this.game.getTime();
+    const durationSec = (currentTime - this.sessionStartTime) / 1000;
+
+    // Calculate frames rendered since THIS SCENE started
+    const framesRendered = this.game.loop.frame - this.sessionStartFrame;
+
+    // Calculate average
+    const avgFps = durationSec > 0.5 ? framesRendered / durationSec : fps;
+
+    this.fpsText.setText(`FPS: ${Math.round(fps)} | Avg: ${Math.round(avgFps)}`);
   }
 
   /**
    * Update score display
    */
   updateScore(newScore) {
-    // Apply COMBINED multiplier to displayed score
-    const betMultiplier = this.budgetManager ? this.budgetManager.getMultiplier() : 1;
-    // This display score is theoretical since logic handles real score, but for UI we show potential? 
-    // Actually, usually score update comes from logic. 
-    // If logic sends raw score (points), we multiply here for display if that's the design.
-    // Based on previous code: `const displayScore = newScore * betMultiplier;`
-    // We should probably keep using the total multiplier.
-    const totalMultiplier = betMultiplier * this.malusMultiplier;
-    const displayScore = Math.floor(newScore * totalMultiplier);
-
-    this.scoreText.setText(formatScore(displayScore));
+    // Score received is already fully calculated (Points * Bet * Malus)
+    // So we display it directly to ensure 1 Score = 1 Yen
+    this.scoreText.setText(formatScore(newScore));
 
     // Pulse animation - ENHANCED
     this.tweens.add({
@@ -668,7 +691,8 @@ export default class UIScene extends Phaser.Scene {
       { key: 'bigBall', icon: '⚾', color: 0xFFA500 },
       { key: 'magnet', icon: '🧲', color: 0x00FFFF },
       { key: 'goldenBall', icon: '🌟', color: 0xFFD700 },
-      { key: 'freeze', icon: '❄️', color: 0xADD8E6 }
+      { key: 'freeze', icon: '❄️', color: 0xADD8E6 },
+      { key: 'multiBall', icon: '🏐', color: 0xFF4500 }
     ];
 
     this.spellItems = {};
@@ -686,6 +710,27 @@ export default class UIScene extends Phaser.Scene {
       // Click handler
       bg.on('pointerdown', () => {
         PowerUpManager.equipPowerUp(spell.key);
+      });
+
+      // Hover handler for tooltip
+      bg.on('pointerover', () => {
+        // Start 2 second timer
+        this.tooltipTimer = this.time.delayedCall(2000, () => {
+          const description = this.languageManager.getText(`powerups.tooltips.${spell.key}`) || "???";
+          // Convert local position to world position for the tooltip
+          const worldPos = this.spellPanel.localTransform.transformPoint(itemContainer.x, itemContainer.y);
+          // Show tooltip to the left of the spell icon
+          this.showTooltip(worldPos.x - 220, worldPos.y + 25, description);
+        });
+      });
+
+      bg.on('pointerout', () => {
+        // Cancel timer and hide tooltip
+        if (this.tooltipTimer) {
+          this.tooltipTimer.remove();
+          this.tooltipTimer = null;
+        }
+        this.hideTooltip();
       });
 
       // Icon
@@ -803,4 +848,52 @@ export default class UIScene extends Phaser.Scene {
     EventBus.off(GameEvents.INVENTORY_UPDATE, this.updateSpellPanel, this);
     EventBus.off(GameEvents.POWERUP_EQUIPPED, this.onSpellEquipped, this);
   }
+
+  /**
+   * Create the hidden tooltip container
+   */
+  createTooltip() {
+    this.tooltipContainer = this.add.container(0, 0).setVisible(false).setDepth(200);
+
+    // Background
+    const bg = this.add.rectangle(0, 0, 200, 60, 0x000000, 0.9);
+    bg.setStrokeStyle(2, 0xFFFFFF, 0.8);
+
+    // Text
+    this.tooltipText = this.add.text(0, 0, "", {
+      fontSize: "16px",
+      color: "#FFFFFF",
+      wordWrap: { width: 190 }
+    }).setOrigin(0.5);
+
+    this.tooltipContainer.add([bg, this.tooltipText]);
+  }
+
+  /**
+   * Show the tooltip at specific position
+   */
+  showTooltip(x, y, text) {
+    if (!this.tooltipContainer) return;
+
+    this.tooltipText.setText(text);
+    this.tooltipContainer.setPosition(x, y);
+    this.tooltipContainer.setVisible(true);
+    this.tooltipContainer.setAlpha(0);
+
+    // Fade in
+    this.tweens.add({
+      targets: this.tooltipContainer,
+      alpha: 1,
+      duration: 200
+    });
+  }
+
+  /**
+   * Hide the tooltip
+   */
+  hideTooltip() {
+    if (!this.tooltipContainer) return;
+    this.tooltipContainer.setVisible(false);
+  }
 }
+
