@@ -3,6 +3,8 @@ import { DESIGN_CONSTANTS, HARDCORE_LAUNCH } from "../config/gameConfig.js";
 import { formatScore } from "../utils/helpers.js";
 import LanguageManager from "../managers/LanguageManager.js";
 import FeatureManager from "../managers/FeatureManager.js";
+import EventBus, { GameEvents } from "../core/EventBus.js";
+import AchievementManager, { TIER_CONFIG } from "../managers/AchievementManager.js";
 
 /**
  * UI Scene - displays score, lives, and game info
@@ -166,6 +168,25 @@ export default class UIScene extends Phaser.Scene {
       this.events.on("hardcoreForceUpdate", this.updateForceIndicator, this);
       this.events.on("hardcorePlaceholderMove", this.updateAngleArrowPosition, this);
       this.events.on("hardcoreArrowVisibility", this.updateAngleArrowVisibility, this);
+    }
+
+    // === ADDICTIVE MECHANICS UI ===
+    if (FeatureManager.isEnabled('comboBar')) {
+      this.createComboBar();
+      EventBus.on(GameEvents.SCORE_COMBO, this.updateComboBar, this);
+    }
+
+    if (FeatureManager.isEnabled('progressBar')) {
+      this.createProgressBar();
+      EventBus.on(GameEvents.TIER_PROGRESS_UPDATE, this.updateProgressBar, this);
+    }
+
+    if (FeatureManager.isEnabled('achievements')) {
+      this.createAchievementPopup();
+      EventBus.on(GameEvents.ACHIEVEMENT_UNLOCKED, this.showAchievementPopup, this);
+
+      // Check for comeback bonus
+      EventBus.on(GameEvents.COMEBACK_BONUS_ACTIVE, this.showComebackBonus, this);
     }
   }
 
@@ -379,6 +400,265 @@ export default class UIScene extends Phaser.Scene {
   }
 
   /**
+   * Create the combo bar UI
+   */
+  createComboBar() {
+    this.comboContainer = this.add.container(650, 400);
+
+    // Background bar
+    const bg = this.add.rectangle(0, 0, 30, 200, 0x000000, 0.5);
+    bg.setStrokeStyle(2, 0xFFFFFF, 0.5);
+    this.comboContainer.add(bg);
+
+    // Fill bar (starts empty)
+    this.comboFill = this.add.rectangle(0, 98, 26, 196, 0xFF4500); // Orange-Red, Full Height
+    this.comboFill.setOrigin(0.5, 1); // Grow from bottom
+    this.comboFill.scaleY = 0; // Start empty
+    this.comboContainer.add(this.comboFill);
+
+    // Sections/Markers
+    for (let i = 1; i < 4; i++) {
+      const y = 100 - (i * 50); // Divide 200px into 4 sections
+      const marker = this.add.rectangle(0, y, 30, 2, 0xFFFFFF, 0.3);
+      this.comboContainer.add(marker);
+    }
+
+    // Label
+    const label = this.add.text(0, 120, "COMBO", {
+      fontSize: "14px",
+      fontStyle: "bold",
+      color: "#FFFFFF"
+    }).setOrigin(0.5);
+    this.comboContainer.add(label);
+
+    // Value text
+    this.comboValueText = this.add.text(0, -120, "0x", {
+      fontSize: "24px",
+      fontStyle: "bold",
+      color: "#FFD700",
+      stroke: "#000000",
+      strokeThickness: 3
+    }).setOrigin(0.5);
+    this.comboContainer.add(this.comboValueText);
+
+    this.comboContainer.setVisible(false); // Hide initially
+  }
+
+  /**
+   * Update combo bar based on current combo
+   */
+  updateComboBar(data) {
+    if (!this.comboContainer) return;
+
+    const combo = data.combo || 0;
+
+    if (combo > 0) {
+      this.comboContainer.setVisible(true);
+      this.comboContainer.setAlpha(1);
+
+      // Max visual combo is 20 for full bar, but text goes higher
+      const fillPercent = Math.min(combo / 20, 1);
+
+      this.comboFill.scaleY = fillPercent;
+      this.comboValueText.setText(`${combo}x`);
+
+      // Change color based on intensity
+      if (combo >= 20) this.comboFill.setFillStyle(0xFF00FF); // Purple
+      else if (combo >= 10) this.comboFill.setFillStyle(0xFFD700); // Gold
+      else if (combo >= 5) this.comboFill.setFillStyle(0xFFA500); // Orange
+      else this.comboFill.setFillStyle(0xFF4500); // Red
+
+      // Pulse effect on update
+      this.tweens.add({
+        targets: this.comboContainer,
+        scale: 1.1,
+        duration: 100,
+        yoyo: true
+      });
+
+    } else {
+      // Fade out if combo is broken
+      this.tweens.add({
+        targets: this.comboContainer,
+        alpha: 0,
+        duration: 500,
+        onComplete: () => {
+          if (this.comboContainer.alpha === 0) {
+            this.comboContainer.setVisible(false);
+          }
+        }
+      });
+    }
+  }
+
+  /**
+   * Create progress bar for next tier/theme
+   */
+  createProgressBar() {
+    this.progressContainer = this.add.container(400, 45); // Top center
+
+    // Background
+    const bg = this.add.rectangle(0, 0, 400, 20, 0x000000, 0.5);
+    bg.setStrokeStyle(2, 0xFFFFFF, 0.3);
+    this.progressContainer.add(bg);
+
+    // Fill
+    this.progressFill = this.add.rectangle(-198, 0, 0, 16, 0x00FF00);
+    this.progressFill.setOrigin(0, 0.5);
+    this.progressContainer.add(this.progressFill);
+
+    // Tier icons/text
+    this.currentTierText = this.add.text(-210, 0, "🥉", { fontSize: "20px" }).setOrigin(1, 0.5);
+    this.nextTierText = this.add.text(210, 0, "🥈", { fontSize: "20px" }).setOrigin(0, 0.5);
+    this.progressContainer.add(this.currentTierText);
+    this.progressContainer.add(this.nextTierText);
+
+    // Percentage text
+    this.progressText = this.add.text(0, 0, "0%", {
+      fontSize: "12px",
+      color: "#FFFFFF",
+      fontFamily: "monospace"
+    }).setOrigin(0.5);
+    this.progressContainer.add(this.progressText);
+  }
+
+  /**
+   * Update progress bar
+   */
+  updateProgressBar(data) {
+    if (!this.progressContainer) return;
+
+    const { currentTier, nextTier, progress } = data;
+
+    // Update icons
+    this.currentTierText.setText(currentTier.icon);
+    this.nextTierText.setText(nextTier ? nextTier.icon : "👑");
+
+    // Animate fill width
+    const targetWidth = Math.max(0, Math.min(396, progress * 396));
+
+    this.tweens.add({
+      targets: this.progressFill,
+      width: targetWidth,
+      duration: 500,
+      ease: 'Cubic.out'
+    });
+
+    this.progressText.setText(`${Math.floor(progress * 100)}%`);
+
+    // Update color based on tier
+    const colors = {
+      'classic': 0x00FF00, // Green
+      'ocean': 0x00FFFF, // Cyan
+      'forest': 0x228B22, // Forest Green
+      'sunset': 0xFF4500, // Orange
+      'midnight': 0x8A2BE2 // Violet
+    };
+
+    if (currentTier.theme && colors[currentTier.theme]) {
+      this.progressFill.setFillStyle(colors[currentTier.theme]);
+    }
+  }
+
+  /**
+   * Create achievement popup container
+   */
+  createAchievementPopup() {
+    this.popupContainer = this.add.container(400, -100); // Start off-screen top
+    this.popupContainer.setDepth(1000); // Topmost
+
+    // Background panel
+    const panel = this.add.rectangle(0, 0, 400, 80, 0x000000, 0.9);
+    panel.setStrokeStyle(3, 0xFFD700);
+    this.popupContainer.add(panel);
+
+    // Shine/Glow effect
+    const glow = this.add.circle(0, 0, 100, 0xFFD700, 0.1);
+    this.popupContainer.add(glow);
+
+    // Icon
+    this.popupIcon = this.add.text(-160, 0, "🏆", { fontSize: "40px" }).setOrigin(0.5);
+    this.popupContainer.add(this.popupIcon);
+
+    // Title
+    this.popupTitle = this.add.text(-120, -15, "ACHIEVEMENT UNLOCKED!", {
+      fontSize: "16px",
+      fontStyle: "bold",
+      color: "#FFD700",
+      fontFamily: "Arial"
+    }).setOrigin(0, 0.5);
+    this.popupContainer.add(this.popupTitle);
+
+    // Description
+    this.popupDesc = this.add.text(-120, 15, "Description here", {
+      fontSize: "14px",
+      color: "#FFFFFF",
+      fontFamily: "Arial"
+    }).setOrigin(0, 0.5);
+    this.popupContainer.add(this.popupDesc);
+  }
+
+  /**
+   * Show achievement notification
+   */
+  showAchievementPopup(data) {
+    if (!this.popupContainer) return;
+
+    const achievement = data.achievement;
+    if (!achievement) return;
+
+    this.popupIcon.setText(achievement.icon || "🏆");
+    this.popupDesc.setText(achievement.name);
+
+    // Slide down animation
+    this.tweens.add({
+      targets: this.popupContainer,
+      y: 100,
+      duration: 500,
+      ease: 'Back.out',
+      onComplete: () => {
+        // Wait and slide up
+        this.time.delayedCall(3000, () => {
+          this.tweens.add({
+            targets: this.popupContainer,
+            y: -100,
+            duration: 500,
+            ease: 'Back.in'
+          });
+        });
+      }
+    });
+
+    // Play sound
+    if (this.gameScene.audioSystem) {
+      // Use a distinct sound or pitch for achievement
+      // this.gameScene.audioSystem.play('achievement');
+    }
+  }
+
+  /**
+   * Show comeback bonus notification
+   */
+  showComebackBonus() {
+    const text = this.add.text(400, 300, this.languageManager.getText('comeback.active'), {
+      fontSize: '32px',
+      color: '#FF0000',
+      fontStyle: 'bold',
+      stroke: '#FFFFFF',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+
+    this.tweens.add({
+      targets: text,
+      scale: 1.5,
+      alpha: 0,
+      duration: 2000,
+      ease: 'Power2',
+      onComplete: () => text.destroy()
+    });
+  }
+
+  /**
    * Clean up event listeners
    */
   shutdown() {
@@ -395,5 +675,10 @@ export default class UIScene extends Phaser.Scene {
       this.events.off("hardcorePlaceholderMove", this.updateAngleArrowPosition, this);
       this.events.off("hardcoreArrowVisibility", this.updateAngleArrowVisibility, this);
     }
+
+    EventBus.off(GameEvents.SCORE_COMBO, this.updateComboBar, this);
+    EventBus.off(GameEvents.ACHIEVEMENT_UNLOCKED, this.showAchievementPopup, this);
+    EventBus.off(GameEvents.TIER_PROGRESS_UPDATE, this.updateProgressBar, this);
+    EventBus.off(GameEvents.COMEBACK_BONUS_ACTIVE, this.showComebackBonus, this);
   }
 }

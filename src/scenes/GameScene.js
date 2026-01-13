@@ -15,6 +15,10 @@ import {
 import BudgetManager from "../managers/BudgetManager.js";
 import { applyWabiSabi, formatScore } from "../utils/helpers.js";
 import FeatureManager from "../managers/FeatureManager.js";
+import EventBus, { GameEvents } from "../core/EventBus.js";
+import EffectsManager from "../managers/EffectsManager.js";
+import PowerUpManager from "../managers/PowerUpManager.js";
+import AchievementManager from "../managers/AchievementManager.js";
 
 /**
  * Main game scene - core gameplay
@@ -139,11 +143,155 @@ export default class GameScene extends Phaser.Scene {
 
     this.setupInput();
 
+    // === ADDICTIVE MECHANICS INITIALIZATION ===
+
+    // Initialize Effects Manager
+    EffectsManager.init(this);
+    PowerUpManager.init();
+
+    // Initialize Power-up Manager
+    PowerUpManager.reset();
+
+    // Initialize Achievement Manager
+    AchievementManager.init();
+    AchievementManager.resetSession();
+
+    // Setup lucky zone spawning if enabled
+    if (FeatureManager.isEnabled('luckyZone')) {
+      this.setupLuckyZone();
+    }
+
+    // Track last combo for threshold detection
+    this.lastComboThreshold = 0;
+
+    // Bucket hit tracking for hot/cold indicator
+    this.bucketHitHistory = {};
+
+    // Near miss tracking
+    this.nearMissShown = {};
+
     // Launch UI scene in parallel
     this.scene.launch("UIScene", { gameScene: this });
 
     // Camera fade in
     this.cameras.main.fadeIn(500);
+
+    // Emit game start event
+    EventBus.emit(GameEvents.GAME_START);
+  }
+
+  /**
+   * Setup lucky zone that appears periodically
+   */
+  setupLuckyZone() {
+    const spawnInterval = (FeatureManager.getParameter('luckyZone', 'spawnInterval') || 45) * 1000;
+    const duration = (FeatureManager.getParameter('luckyZone', 'duration') || 8) * 1000;
+
+    this.luckyZoneActive = false;
+    this.luckyZone = null;
+
+    // Spawn lucky zone periodically
+    this.time.addEvent({
+      delay: spawnInterval,
+      callback: () => this.spawnLuckyZone(duration),
+      loop: true
+    });
+  }
+
+  /**
+   * Spawn a temporary x20 lucky zone
+   */
+  spawnLuckyZone(duration) {
+    if (this.luckyZoneActive || this.isGameOver) return;
+
+    this.luckyZoneActive = true;
+
+    // Choose random position (replace a normal bucket temporarily)
+    const bucketIndex = Phaser.Math.Between(2, 4); // Middle buckets only
+    const bucket = this.buckets[bucketIndex];
+
+    // Create lucky zone overlay
+    const luckyZone = this.add.rectangle(
+      bucket.zone.x,
+      bucket.zone.y,
+      bucket.visual.width + 10,
+      bucket.visual.height + 10,
+      0xFFD700,
+      0.6
+    );
+    luckyZone.setStrokeStyle(4, 0xFFFFFF);
+    luckyZone.setDepth(100);
+
+    // Lucky zone label
+    const luckyLabel = this.add.text(bucket.zone.x, bucket.zone.y - 15, '★ x20 ★', {
+      fontSize: '24px',
+      fontFamily: 'serif',
+      fontStyle: 'bold',
+      color: '#FFFFFF',
+      stroke: '#000000',
+      strokeThickness: 3
+    }).setOrigin(0.5).setDepth(101);
+
+    // Pulsing animation
+    this.tweens.add({
+      targets: [luckyZone, luckyLabel],
+      scale: { from: 1, to: 1.1 },
+      alpha: { from: 1, to: 0.8 },
+      duration: 300,
+      yoyo: true,
+      repeat: -1
+    });
+
+    // Store reference
+    this.luckyZone = {
+      visual: luckyZone,
+      label: luckyLabel,
+      bucketIndex,
+      originalValue: bucket.config.value
+    };
+
+    // Temporarily modify bucket value
+    bucket.config.value = 20;
+    bucket.valueText.setText('20');
+
+    // Emit spawn event
+    EventBus.emit(GameEvents.LUCKY_ZONE_SPAWN, { bucketIndex });
+
+    // Remove after duration
+    this.time.delayedCall(duration, () => {
+      this.removeLuckyZone();
+    });
+  }
+
+  /**
+   * Remove the lucky zone
+   */
+  removeLuckyZone() {
+    if (!this.luckyZone) return;
+
+    const { visual, label, bucketIndex, originalValue } = this.luckyZone;
+
+    // Restore original bucket value
+    const bucket = this.buckets[bucketIndex];
+    bucket.config.value = originalValue;
+    bucket.valueText.setText(originalValue.toString());
+
+    // Fade out animation
+    this.tweens.add({
+      targets: [visual, label],
+      alpha: 0,
+      scale: 1.5,
+      duration: 300,
+      onComplete: () => {
+        visual.destroy();
+        label.destroy();
+      }
+    });
+
+    this.luckyZone = null;
+    this.luckyZoneActive = false;
+
+    EventBus.emit(GameEvents.LUCKY_ZONE_DESPAWN);
   }
 
   /**
@@ -680,9 +828,13 @@ export default class GameScene extends Phaser.Scene {
       this.musicStarted = true;
     }
 
-    // Create ball with appropriate size
-    const ballSize = this.hardcoreMode ? this.hardcoreState.currentSize : DESIGN_CONSTANTS.BALL_RADIUS;
-    const ball = new Ball(this, x, y, ballSize);
+    // Get ball modifiers from PowerUpManager (includes golden ball chance check)
+    const modifiers = PowerUpManager.getNextBallModifiers();
+
+    // Create ball with appropriate size and modifiers
+    let ballSize = this.hardcoreMode ? this.hardcoreState.currentSize : DESIGN_CONSTANTS.BALL_RADIUS;
+
+    const ball = new Ball(this, x, y, ballSize, modifiers);
     this.balls.push(ball);
     this.activeBalls++;
 
@@ -697,6 +849,13 @@ export default class GameScene extends Phaser.Scene {
     } else {
       ball.launch();
     }
+
+    // Emit ball launched event for achievements
+    EventBus.emit(GameEvents.BALL_LAUNCHED, {
+      ball,
+      isGolden: modifiers.isGolden,
+      modifiers
+    });
 
     // Emit ball state change to disable CASH OUT button
     this.scene.get('UIScene').events.emit('ballStateChange', true);
@@ -746,6 +905,23 @@ export default class GameScene extends Phaser.Scene {
 
       // Combo effects
       const combo = ball.getCombo();
+
+      // Emit combo event for achievements
+      EventBus.emit(GameEvents.SCORE_COMBO, { combo });
+
+      // Check combo thresholds for announcements (5, 10, 20, 50)
+      const thresholds = [5, 10, 20, 50];
+      for (const threshold of thresholds) {
+        if (combo === threshold && this.lastComboThreshold < threshold) {
+          this.lastComboThreshold = threshold;
+          EventBus.emit(GameEvents.COMBO_THRESHOLD, { combo });
+
+          // Create combo particles via EffectsManager
+          EffectsManager.createComboParticles(ball.x, ball.y, combo);
+          break;
+        }
+      }
+
       if (combo > 0) {
         // Rainbow trail for combos
         const rainbow = this.add.particles(ball.x, ball.y, "particle", {
@@ -780,9 +956,31 @@ export default class GameScene extends Phaser.Scene {
 
     const combo = ball.getCombo();
     const multiplier = 1 + combo * 0.2;
-    const points = Math.floor(bucket.config.value * multiplier);
+
+    // Apply golden ball score multiplier
+    const goldenMultiplier = ball.scoreMultiplier || 1;
+    const basePoints = Math.floor(bucket.config.value * multiplier);
+    const points = Math.floor(basePoints * goldenMultiplier);
 
     this.score += points;
+
+    // Reset combo threshold tracker
+    this.lastComboThreshold = 0;
+
+    // Emit bucket hit event for achievements
+    EventBus.emit(GameEvents.BALL_HIT_BUCKET, {
+      value: bucket.config.value,
+      points,
+      combo,
+      isGolden: ball.isGolden
+    });
+
+    // Track bucket hit for hot/cold indicator
+    const bucketIndex = this.buckets.indexOf(bucket);
+    this.bucketHitHistory[bucketIndex] = Date.now();
+    if (FeatureManager.isEnabled('hotColdIndicator')) {
+      EventBus.emit(GameEvents.BUCKET_HOT, { bucketIndex });
+    }
 
     // Visual feedback - SPECTACULAR EDITION
     this.tweens.add({
@@ -800,7 +998,11 @@ export default class GameScene extends Phaser.Scene {
       yoyo: true,
     });
 
-    // Explosion de particules dans le bucket
+    // Explosion de particules dans le bucket (enhanced via EffectsManager for big wins)
+    if (bucket.config.value >= 5) {
+      EffectsManager.createBucketExplosion(ball.x, ball.y, bucket.config.color, bucket.config.value);
+    }
+
     const explosion = this.add.particles(ball.x, ball.y, "particle", {
       speed: { min: 200, max: 400 },
       scale: { start: 1, end: 0 },
@@ -824,8 +1026,14 @@ export default class GameScene extends Phaser.Scene {
       onComplete: () => flash.destroy(),
     });
 
-    // Screen shake plus fort
-    this.cameras.main.shake(200, 0.005);
+    // Screen shake - stronger for high value buckets
+    if (bucket.config.value >= 10) {
+      EventBus.emit(GameEvents.SCREEN_SHAKE, { intensity: 'BIG' });
+    } else if (bucket.config.value >= 5) {
+      EventBus.emit(GameEvents.SCREEN_SHAKE, { intensity: 'MEDIUM' });
+    } else {
+      this.cameras.main.shake(200, 0.005);
+    }
 
     // Cercles d'onde de choc multiples
     for (let i = 0; i < 3; i++) {
@@ -846,6 +1054,11 @@ export default class GameScene extends Phaser.Scene {
     // Show floating score text with bet multiplier applied
     const betMultiplier = this.budgetManager ? this.budgetManager.getMultiplier() : 1;
     const displayPoints = points * betMultiplier;
+
+    // Use flying score animation for big wins
+    if (bucket.config.value >= 5) {
+      EffectsManager.showFlyingScore(ball.x, ball.y, 100, 40, displayPoints, bucket.config.color);
+    }
     this.showFloatingText(ball.x, ball.y, `+${displayPoints}`);
 
     // Show combo text if significant
@@ -872,6 +1085,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Emit event for UI update
     this.events.emit("scoreUpdate", this.score);
+    EventBus.emit(GameEvents.SCORE_UPDATE, { score: this.score, total: this.score });
   }
 
   /**
@@ -1034,23 +1248,56 @@ export default class GameScene extends Phaser.Scene {
       });
     }
 
+    // === NEAR MISS DETECTION ===
+    if (FeatureManager.isEnabled('nearMissEffect')) {
+      this.balls.forEach((ball) => {
+        if (!ball.active) return;
+
+        // Check if ball is near bucket zone (Y position close to buckets)
+        if (ball.y > 900 && ball.y < 950) {
+          const { isNear, bucket } = EffectsManager.checkNearMiss(ball.x, ball.y, this.buckets);
+
+          if (isNear && bucket && bucket.config.value >= 5) {
+            // Only show once per ball per bucket
+            const ballBucketKey = `${ball.uid || ball.x}-${bucket.config.value}`;
+            if (!this.nearMissShown[ballBucketKey]) {
+              this.nearMissShown[ballBucketKey] = true;
+              EventBus.emit(GameEvents.NEAR_MISS, {
+                x: ball.x,
+                y: ball.y,
+                bucketValue: bucket.config.value
+              });
+            }
+          }
+        }
+      });
+    }
+
     // Check for stuck balls (oscillating between 2 pins)
     this.balls.forEach((ball) => {
       if (ball.active && ball.isStuckBetweenPins()) {
-        console.log('Ball stuck between pins - removing');
-        ball.destroy();
-        this.activeBalls--;
-        this.lives--;
+        if (ball.nudgeCount < 3) {
+          console.log('Ball stuck - nudging');
+          ball.nudge();
+        } else {
+          console.log('Ball stuck between pins - removing');
+          ball.destroy();
+          this.activeBalls--;
+          this.lives--;
 
-        // Re-enable CASH OUT button if no more active balls
-        if (this.activeBalls === 0) {
-          this.scene.get('UIScene').events.emit('ballStateChange', false);
-        }
+          // Emit ball lost event
+          EventBus.emit(GameEvents.BALL_LOST);
 
-        this.events.emit('livesUpdate', this.lives);
+          // Re-enable CASH OUT button if no more active balls
+          if (this.activeBalls === 0) {
+            this.scene.get('UIScene').events.emit('ballStateChange', false);
+          }
 
-        if (this.lives <= 0) {
-          this.gameOver();
+          this.events.emit('livesUpdate', this.lives);
+
+          if (this.lives <= 0) {
+            this.gameOver();
+          }
         }
       }
     });
@@ -1065,6 +1312,9 @@ export default class GameScene extends Phaser.Scene {
         ball.destroy();
         this.activeBalls--;
         this.lives--;
+
+        // Emit ball lost event
+        EventBus.emit(GameEvents.BALL_LOST);
 
         // Re-enable CASH OUT button if no more active balls
         if (this.activeBalls === 0) {

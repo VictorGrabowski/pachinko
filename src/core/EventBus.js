@@ -71,6 +71,45 @@ export const GameEvents = {
 
     // Theme events
     PALETTE_CHANGED: 'palette:changed',
+
+    // === ADDICTIVE MECHANICS EVENTS ===
+
+    // Effects events
+    SCREEN_SHAKE: 'effects:shake',
+    SLOW_MOTION_START: 'effects:slowmoStart',
+    SLOW_MOTION_END: 'effects:slowmoEnd',
+
+    // Combo events
+    COMBO_THRESHOLD: 'combo:threshold',
+    COMBO_ANNOUNCEMENT: 'combo:announcement',
+
+    // Near miss events
+    NEAR_MISS: 'effects:nearMiss',
+
+    // Achievement events
+    ACHIEVEMENT_UNLOCKED: 'achievement:unlocked',
+    CHALLENGE_COMPLETE: 'challenge:complete',
+    STREAK_UPDATE: 'streak:update',
+
+    // Power-up events
+    POWERUP_ACTIVATED: 'powerup:activated',
+    POWERUP_EXPIRED: 'powerup:expired',
+    GOLDEN_BALL_TRIGGERED: 'ball:golden',
+
+    // Special bucket events
+    MYSTERY_BUCKET_HIT: 'bucket:mystery',
+    LUCKY_ZONE_SPAWN: 'bucket:luckyZone',
+    LUCKY_ZONE_DESPAWN: 'bucket:luckyZoneDespawn',
+
+    // Progress events
+    TIER_PROGRESS_UPDATE: 'progress:tier',
+    TIER_UNLOCKED: 'progress:tierUnlocked',
+    COMEBACK_BONUS_ACTIVE: 'bonus:comebackActive',
+    COMEBACK_BONUS_INACTIVE: 'bonus:comebackInactive',
+
+    // Hot/Cold indicator events
+    BUCKET_HOT: 'bucket:hot',
+    BUCKET_COLD: 'bucket:cold',
 };
 
 export default EventBus;

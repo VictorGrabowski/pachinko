@@ -4,13 +4,27 @@ import FeatureManager from "../managers/FeatureManager.js";
 
 /**
  * Ball entity with trail effect and wabi-sabi aesthetic
+ * Supports power-up modifiers: golden, ghost, big ball
  */
 export default class Ball extends Phaser.Physics.Arcade.Sprite {
-  constructor(scene, x, y, radius = DESIGN_CONSTANTS.BALL_RADIUS) {
+  constructor(scene, x, y, radius = DESIGN_CONSTANTS.BALL_RADIUS, modifiers = {}) {
     super(scene, x, y, "ball");
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
+
+    // Power-up modifiers
+    this.isGolden = modifiers.isGolden || false;
+    this.isGhost = modifiers.isGhost || false;
+    this.isBig = modifiers.isBig || false;
+    this.hasMagnet = modifiers.hasMagnet || false;
+    this.scoreMultiplier = modifiers.scoreMultiplier || 1;
+    this.ghostRowsRemaining = modifiers.isGhost ? 3 : 0; // Rows to pass through
+
+    // Apply big ball modifier
+    if (this.isBig) {
+      radius *= 1.5;
+    }
 
     // Store radius for dynamic sizing
     this.ballRadius = radius;
@@ -31,13 +45,23 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
 
     // Limit max velocity to prevent collision tunneling through pins
     this.body.setMaxVelocity(180, 500);
-    this.setTint(DESIGN_CONSTANTS.COLORS.BALL);
+
+    // Apply visual tint based on modifiers
+    if (this.isGolden) {
+      this.setTint(0xFFD700); // Gold
+    } else if (this.isGhost) {
+      this.setTint(0x88CCFF); // Light blue/ghostly
+      this.setAlpha(0.7);
+    } else {
+      this.setTint(DESIGN_CONSTANTS.COLORS.BALL);
+    }
 
     // Trail system - get settings from FeatureManager (with fallback defaults)
     this.trailLength = FeatureManager.getParameter("ballTrail", "length") || 25;
     this.trailThickness = FeatureManager.getParameter("ballTrail", "thickness") || 3;
     this.trailOpacity = FeatureManager.getParameter("ballTrail", "opacity") || 0.8;
-    this.trailColor = DESIGN_CONSTANTS.COLORS.GOLD; // Use gold for better visibility
+    // Golden ball gets golden trail, ghost gets blue trail
+    this.trailColor = this.isGolden ? 0xFFD700 : (this.isGhost ? 0x88CCFF : DESIGN_CONSTANTS.COLORS.GOLD);
     this.positionHistory = [];
 
     // Check if trail is enabled (default to true if not found)
@@ -48,24 +72,31 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     this.trailGraphics = scene.add.graphics();
     this.trailGraphics.setDepth(5); // Above background, below UI
 
-    // Add glow effect
-    this.glowCircle = scene.add.circle(x, y, DESIGN_CONSTANTS.BALL_RADIUS * 2, DESIGN_CONSTANTS.COLORS.BALL, 0.3);
+    // Add glow effect - enhanced for golden ball
+    const glowColor = this.isGolden ? 0xFFD700 : DESIGN_CONSTANTS.COLORS.BALL;
+    const glowAlpha = this.isGolden ? 0.5 : 0.3;
+    this.glowCircle = scene.add.circle(x, y, this.ballRadius * 2, glowColor, glowAlpha);
     this.glowCircle.setBlendMode('ADD');
 
-    // Pulsing glow animation
+    // Pulsing glow animation - faster for golden ball
     scene.tweens.add({
       targets: this.glowCircle,
-      scale: { from: 1, to: 1.5 },
-      alpha: { from: 0.3, to: 0.1 },
-      duration: 500,
+      scale: { from: 1, to: this.isGolden ? 1.8 : 1.5 },
+      alpha: { from: glowAlpha, to: 0.1 },
+      duration: this.isGolden ? 300 : 500,
       yoyo: true,
       repeat: -1,
     });
 
+    // Golden ball sparkle effect
+    if (this.isGolden) {
+      this.createGoldenSparkles(scene);
+    }
+
     // Combo text display
     this.comboText = scene.add.text(x, y - 25, '', {
       fontSize: '20px',
-      color: '#FFD700',
+      color: this.isGolden ? '#FFD700' : '#FFFFFF',
       fontStyle: 'bold',
       stroke: '#000000',
       strokeThickness: 3,
@@ -74,11 +105,44 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     this.isActive = true;
     this.pinHitCount = 0;
     this.lastHitPin = null; // Track the last pin hit to prevent double-counting
+    this.rowsPassed = 0; // Track rows passed for ghost mode
 
     // Stuck ball detection - track collision history
     this.collisionHistory = []; // Array of pin references
     this.collisionHistoryLimit = 100; // Check last 100 collisions
     this.maxUniquePinsForStuck = 2; // If only 2 or fewer unique pins, ball is stuck
+    this.nudgeCount = 0; // Track nudges to prevent infinite loops
+  }
+
+  /**
+   * Create sparkle effect for golden ball
+   */
+  createGoldenSparkles(scene) {
+    this.sparkleTimer = scene.time.addEvent({
+      delay: 100,
+      callback: () => {
+        if (!this.active) return;
+
+        const sparkle = scene.add.circle(
+          this.x + Phaser.Math.Between(-10, 10),
+          this.y + Phaser.Math.Between(-10, 10),
+          Phaser.Math.Between(2, 4),
+          0xFFFFFF
+        );
+        sparkle.setAlpha(0.8);
+        sparkle.setBlendMode('ADD');
+
+        scene.tweens.add({
+          targets: sparkle,
+          alpha: 0,
+          scale: 0.2,
+          y: sparkle.y - 20,
+          duration: 300,
+          onComplete: () => sparkle.destroy()
+        });
+      },
+      loop: true
+    });
   }
 
   /**
@@ -146,6 +210,22 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     if (this.collisionHistory.length > this.collisionHistoryLimit) {
       this.collisionHistory.shift();
     }
+  }
+
+  /**
+   * Nudge the ball to dislodge it
+   */
+  nudge() {
+    this.nudgeCount++;
+
+    // Apply random force
+    const forceX = Phaser.Math.Between(-100, 100);
+    const forceY = Phaser.Math.Between(-150, -50); // Slight upward pop
+
+    this.setVelocity(this.body.velocity.x + forceX, this.body.velocity.y + forceY);
+
+    // Reset collision history to give it a chance to record new path
+    this.collisionHistory = [];
   }
 
   /**
@@ -256,6 +336,9 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
    * Clean up trail graphics before destroying
    */
   destroy() {
+    if (this.sparkleTimer) {
+      this.sparkleTimer.destroy();
+    }
     if (this.trailGraphics) {
       this.trailGraphics.destroy();
     }

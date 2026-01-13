@@ -360,6 +360,172 @@ export const FEATURES = [
         step: 50
       }
     ]
+  },
+
+  // ===== ADDICTIVE MECHANICS FEATURES =====
+  {
+    id: "screenShake",
+    name: "Tremblement d'écran",
+    description: "Secoue l'écran sur les gros gains et combos",
+    category: "visual",
+    enabled: true,
+    parameters: [
+      {
+        key: "intensity",
+        label: "Intensité",
+        type: "number",
+        default: 1,
+        min: 0.5,
+        max: 2,
+        step: 0.1
+      }
+    ]
+  },
+  {
+    id: "slowMotion",
+    name: "Ralenti dramatique",
+    description: "Ralentit le temps quand la balle approche des gros buckets",
+    category: "visual",
+    enabled: true,
+    parameters: []
+  },
+  {
+    id: "comboAnnouncements",
+    name: "Annonces de combo",
+    description: "Affiche des messages excitants lors de gros combos (GREAT!, AMAZING!, etc.)",
+    category: "visual",
+    enabled: true,
+    parameters: []
+  },
+  {
+    id: "nearMissEffect",
+    name: "Effet 'SI PRÈS !'",
+    description: "Signale quand la balle frôle un bucket à haute valeur",
+    category: "visual",
+    enabled: true,
+    parameters: []
+  },
+  {
+    id: "goldenBall",
+    name: "Balle dorée",
+    description: "1/10 chance d'obtenir une balle dorée avec gains doublés",
+    category: "gameplay",
+    enabled: true,
+    parameters: [
+      {
+        key: "chance",
+        label: "Probabilité",
+        type: "number",
+        default: 0.1,
+        min: 0.05,
+        max: 0.25,
+        step: 0.05
+      }
+    ]
+  },
+  {
+    id: "mysteryBucket",
+    name: "Bucket mystère",
+    description: "Un bucket '?' avec multiplicateur aléatoire",
+    category: "gameplay",
+    enabled: true,
+    parameters: [
+      {
+        key: "spawnChance",
+        label: "Chance d'apparition",
+        type: "number",
+        default: 0.3,
+        min: 0.1,
+        max: 0.5,
+        step: 0.1
+      }
+    ]
+  },
+  {
+    id: "luckyZone",
+    name: "Zone chance x20",
+    description: "Zone dorée x20 qui apparaît aléatoirement",
+    category: "gameplay",
+    enabled: true,
+    parameters: [
+      {
+        key: "spawnInterval",
+        label: "Intervalle d'apparition (sec)",
+        type: "number",
+        default: 45,
+        min: 20,
+        max: 120,
+        step: 5
+      },
+      {
+        key: "duration",
+        label: "Durée visible (sec)",
+        type: "number",
+        default: 8,
+        min: 3,
+        max: 15,
+        step: 1
+      }
+    ]
+  },
+  {
+    id: "achievements",
+    name: "Succès et badges",
+    description: "Système de succès à débloquer avec notifications",
+    category: "gameplay",
+    enabled: true,
+    parameters: []
+  },
+  {
+    id: "comebackBonus",
+    name: "Bonus de retour",
+    description: "Multiplicateur bonus quand le solde est bas",
+    category: "gameplay",
+    enabled: true,
+    parameters: [
+      {
+        key: "threshold",
+        label: "Seuil de déclenchement (%)",
+        type: "number",
+        default: 20,
+        min: 10,
+        max: 40,
+        step: 5
+      },
+      {
+        key: "bonus",
+        label: "Bonus multiplicateur (%)",
+        type: "number",
+        default: 50,
+        min: 25,
+        max: 100,
+        step: 25
+      }
+    ]
+  },
+  {
+    id: "progressBar",
+    name: "Barre de progression",
+    description: "Affiche la progression vers le prochain palier/thème",
+    category: "visual",
+    enabled: true,
+    parameters: []
+  },
+  {
+    id: "comboBar",
+    name: "Barre de combo",
+    description: "Barre visuelle colorée montrant le niveau de combo actuel",
+    category: "visual",
+    enabled: true,
+    parameters: []
+  },
+  {
+    id: "hotColdIndicator",
+    name: "Indicateur Hot/Cold",
+    description: "Montre quels buckets ont été touchés récemment",
+    category: "visual",
+    enabled: true,
+    parameters: []
   }
 ];
 
@@ -463,29 +629,29 @@ export const MALUS_POOL = [
 export function generateRandomMalusConfig(minMaluses = 2, maxMaluses = 4) {
   // Shuffle the malus pool
   const shuffled = [...MALUS_POOL].sort(() => Math.random() - 0.5);
-  
+
   // Pick random count between min and max
   const count = Math.floor(Math.random() * (maxMaluses - minMaluses + 1)) + minMaluses;
-  
+
   // Select maluses, avoiding duplicates for creature variants
   const selected = [];
   let hasCreature = false;
-  
+
   for (const malus of shuffled) {
     if (selected.length >= count) break;
-    
+
     // Only allow one creature variant
     if (malus.featureId === "creature") {
       if (hasCreature) continue;
       hasCreature = true;
     }
-    
+
     selected.push(malus);
   }
-  
+
   // Calculate multiplier
   const multiplier = calculateMalusMultiplier(selected);
-  
+
   return {
     selectedMaluses: selected,
     multiplier
@@ -501,7 +667,7 @@ export function generateRandomMalusConfig(minMaluses = 2, maxMaluses = 4) {
 export function calculateMalusMultiplier(maluses) {
   let bonusSum = 0;
   let hasHardcore = false;
-  
+
   for (const malus of maluses) {
     if (malus.isHardcore) {
       hasHardcore = true;
@@ -509,7 +675,7 @@ export function calculateMalusMultiplier(maluses) {
       bonusSum += malus.bonusPercent;
     }
   }
-  
+
   const baseMultiplier = 1 + (bonusSum / 100);
   return hasHardcore ? baseMultiplier * 2 : baseMultiplier;
 }

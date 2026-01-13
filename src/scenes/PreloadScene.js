@@ -21,6 +21,7 @@ export default class PreloadScene extends Phaser.Scene {
     this.load.image("tutorial_configuration", "assets/tutorial/tutorial_configuration.png");
     this.load.image("tutorial_launch", "assets/tutorial/tutorial_launch.png");
     this.load.image("tutorial_yokais", "assets/tutorial/tutorial_yokais.png");
+    this.load.image("tutorial_ball", "assets/tutorial/tutorial_ball.png");
 
     // Load yokai images for tutorial page 4
     this.load.image("yokai_1", "assets/tutorial/yokai_1.png");
